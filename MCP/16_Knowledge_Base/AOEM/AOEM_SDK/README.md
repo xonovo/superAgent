@@ -1,0 +1,14 @@
+# AOEM SDK
+
+## 目标
+
+沉淀 AOEM SDK、接口约定、调用示例和集成边界。
+
+## 待补充主题
+
+1. SDK 模块。
+2. SDK 初始化。
+3. Semantic Request 调用。
+4. Runtime 调用。
+5. GPU 调用。
+6. 隐私计算调用。

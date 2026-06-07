@@ -1,4 +1,4 @@
-version: OMCF-V2.1
+version: OMCF-V3
 project_scope: reusable
 tasks:
   - id: TASK-AOEM-001
@@ -7,9 +7,12 @@ tasks:
     nickname: 庞统
     module: 13_AOEM
     rules:
-      - must_reference: MCP/13_AOEM/aoem_core_spec.md
+      - must_reference: MCP/16_Knowledge_Base/AOEM
+      - must_check_training_status: MCP/19_Learning_Center/expert_training_register.md
       - must_pass_audit: true
       - validate: GPU_dispatch_test
+    output_limit:
+      when_untrained: 只能输出资料缺口、学习计划、风险提示，不得输出 AOEM 定论
     outputs:
       - AOEM 内核扩展方案
       - GPU 调度策略
@@ -35,8 +38,11 @@ tasks:
     module: 14_Math
     rules:
       - must_reference: MCP/14_Math/algebra_spec.md
+      - must_check_training_status: MCP/19_Learning_Center/expert_training_register.md
       - must_pass_validation: true
       - validate: Quantum_Simulation_Test
+    output_limit:
+      when_untrained: 只能输出假设、待验证问题和验证计划，不得输出数学理论定论
     outputs:
       - 代数结构定义
       - 数学假设清单
@@ -61,8 +67,11 @@ tasks:
     module: 15_Language
     rules:
       - must_reference: MCP/15_Language/language_evolution_spec.md
+      - must_check_training_status: MCP/19_Learning_Center/expert_training_register.md
       - must_pass_audit: true
       - validate: compiler-sanity-test
+    output_limit:
+      when_untrained: 只能输出语言研究计划、语义问题清单和原型边界，不得输出语言设计定论
     outputs:
       - 语言目标与非目标
       - 语义模型

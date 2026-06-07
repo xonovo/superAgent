@@ -1,42 +1,48 @@
-# superAgent OMCF / WPF-MCP V2.1
+# superAgent OMCF / WPF-MCP V3
 
 本目录是 superAgent 的 AI 自治研发体系文档中心。
 
-`OMCF` 是 OneMan AI Company Framework，即“一人 AI 公司框架”。它定义永久组织、角色职责、协作流程、审计门禁和项目复用方式。
+`OMCF` 是 OneMan AI Company Framework，即“一人 AI 公司框架”。V3 在 V2.1 的组织、流程、审计基础上新增 `Memory` 层，使 Codex 角色拥有可追溯、可审计、可复用的知识库和长期记忆。
 
-`MCP` 在本目录中只表示 `Master Control Protocol`，即内部总控协议；它不是 Anthropic 的 `Model Context Protocol`。为了避免混淆，项目级命名统一采用：
+`MCP` 在本目录中只表示 `Master Control Protocol`，即内部总控协议；它不是 Anthropic 的 `Model Context Protocol`。
+
+## 核心模型
 
 ```text
-OMCF-Core              永久公司框架
-OMCF-Project-Pack      项目资料包
-OMCF-Delivery-System   交付流程
-OMCF-Audit-Gate        审计闸门
-WPF-MCP                株洲智慧物业项目的总控协议实例
+OMCF
+├── Core                 永久组织、角色、协作边界
+├── Project Pack         项目资料包
+├── Delivery             任务、文档、设计、开发、测试、部署
+├── Audit                审计门禁、复审、发布阻断
+└── Memory               知识库、长期记忆、学习、战略
 ```
 
-## 核心目标
-
-MCP V2.1 的第一目标不是立即写代码，而是先完成统一：
+## V3 核心目标
 
 1. 统一组织
 2. 统一思想
 3. 统一数据
 4. 统一规则
 5. 统一文档
-6. 再统一代码
+6. 统一知识
+7. 统一记忆
+8. 再统一代码
 
-只有在规则、文档、数据口径、任务边界和审计门禁清晰之后，Codex 集群才允许进入开发。
+任何专家不得依赖模型自身记忆。所有专业结论必须来自 `Knowledge_Base`，所有历史判断必须来自 `Memory_Center`。
 
 ## 总体链路
 
 ```text
 King Xu
   -> 女娲 / CAIO / AI 总经理
+    -> 伏羲 / CKO / 知识中心
+    -> 仓颉 / CMO / 记忆中心
+    -> 鬼谷子 / CSO / 战略中心
+    -> 扁鹊 / CLO / 学习中心
     -> 诸葛亮 / CEO / PM 总控
       -> 墨子 / CTO / 总架构师
         -> 专业 Codex 部门
           -> 赵云 / Auditor Codex / 独立审计
-            -> 发布或退回
 ```
 
 ## 永久组织
@@ -47,6 +53,11 @@ King Xu
 King Xu
 │
 └── 女娲（CAIO / AI 总经理）
+     │
+     ├── 伏羲（CKO-001 / 知识总监）
+     ├── 仓颉（CMO-001 / 记忆总监）
+     ├── 鬼谷子（CSO-001 / 战略总监）
+     ├── 扁鹊（CLO-001 / 学习总监）
      │
      ├── 诸葛亮（PM-001 / CEO / 项目总经理）
      ├── 墨子（ARC-001 / CTO / 总架构师）
@@ -87,42 +98,38 @@ MCP/
 ├── 12_Data_Governance      数据治理、质量检查、训练数据准备
 ├── 13_AOEM                 AOEM 内核、GPU 调度、隐私计算、执行优化
 ├── 14_Math                 代数结构、数理验证、量子计算、模型证明
-└── 15_Language             新语言语义、指令集设计、编译优化、自动演化
+├── 15_Language             新语言语义、指令集设计、编译优化、自动演化
+├── 16_Knowledge_Base       AOEM、NOVOVM、物业、法规、项目知识库
+├── 17_Memory_Center        项目历史、决策记录、架构记录、失败经验
+├── 18_Strategy_Center      商业分析、产品路线、竞争分析、长期规划
+└── 19_Learning_Center      新文档吸收、知识蒸馏、训练集、专家成长
 ```
-
-## 第一阶段交付物
-
-第一阶段必须完成如下文档：
-
-1. 项目章程
-2. 角色矩阵
-3. MCP 总控协议
-4. Codex 命令模板
-5. 任务流规则
-6. 审计门禁规则
-7. 产品 PRD 框架
-8. 架构原则
-9. 数据治理计划
-10. API 标准
-11. AI 与 AOEM 专项规范
-12. 数学模型验证规范
-13. 新语言演化规范
-14. 测试策略
-15. 发布规则
-16. 文档管理规范
 
 ## 工作原则
 
 任何专业 Codex 在执行任务前必须先读取：
 
 1. `MCP/README.md`
-2. `MCP/MCP_V2_MASTER_CONTROL_PROTOCOL.md`
+2. `MCP/MCP_V3_MASTER_CONTROL_PROTOCOL.md`
 3. `MCP/AGENT_ROLE_MATRIX.md`
 4. `MCP/CODEX_COMMAND_TEMPLATES.md`
 5. 与任务相关领域目录下的 `README.md`
-6. 当前任务卡和审计清单
+6. `MCP/16_Knowledge_Base/README.md`
+7. `MCP/17_Memory_Center/README.md`
+8. 当前任务卡和审计清单
 
-没有文档依据的实现，不进入发布流程。
+没有知识库依据、没有记忆检索、没有文档依据的实现，不进入发布流程。
+
+## 专家训练红线
+
+以下规则为 V3 强制门禁：
+
+1. 未经知识库训练完成，庞统不得输出 AOEM 结论。
+2. 未经知识库训练完成，华佗不得输出数学理论结论。
+3. 未经知识库训练完成，庄周不得输出语言设计结论。
+4. 新资料必须进入 `Learning_Center`，再进入 `Knowledge_Base`。
+5. 历史决策必须进入 `Memory_Center`。
+6. 战略规划必须进入 `Strategy_Center`。
 
 ## 人工确认红线
 

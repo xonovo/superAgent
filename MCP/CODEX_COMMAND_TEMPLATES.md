@@ -1,11 +1,11 @@
 # Codex Command Templates
 
-本文档定义 OMCF / WPF-MCP V2.1 的可复用 Codex 命令模板。每个项目只需要替换项目名称、项目类型、项目资料和当前阶段。
+本文档定义 OMCF / WPF-MCP V3 的可复用 Codex 命令模板。每个项目只需要替换项目名称、项目类型、项目资料和当前阶段。
 
-## 1. OMCF 项目启动命令
+## 1. OMCF V3 项目启动命令
 
 ```text
-【OMCF V2.1 启动】
+【OMCF V3 启动】
 
 项目名称：
 <Project Name>
@@ -24,23 +24,56 @@ MCP/PROJECT_PACK_TEMPLATE.md
 
 执行要求：
 1. 启动女娲总控
-2. 诸葛亮生成项目计划和任务树
-3. 墨子确认架构边界和技术路线
-4. 嬴政建立文档体系
-5. 各专业 Codex 只输出设计，不直接编码
-6. 如涉及 AOEM、数学模型或新语言，自动引入庞统、华佗、庄周
-7. 赵云进行阶段审计
-8. 审计通过后才允许进入开发阶段
+2. 伏羲检索项目相关知识库
+3. 仓颉检索历史项目、历史决策、历史架构记录
+4. 鬼谷子输出战略影响判断
+5. 扁鹊登记新知识吸收和专家训练需求
+6. 诸葛亮生成项目计划和任务树
+7. 墨子确认架构边界和技术路线
+8. 嬴政建立文档体系
+9. 如涉及 AOEM、数学模型或新语言，自动引入庞统、华佗、庄周
+10. 赵云进行阶段审计
+11. 审计通过后才允许进入开发阶段
 ```
 
-## 2. WPF-MCP V2.1 项目命令
+## 2. OMCF V3 总命令
 
 ```text
-【WPF-MCP V2.1】
+【OMCF V3】
+
+新增永久机构：
+
+伏羲（知识中心）
+鬼谷子（战略中心）
+扁鹊（学习中心）
+仓颉（记忆中心）
+
+执行原则：
+
+1. 任何专家不得依赖模型自身记忆
+2. 所有专业知识必须来源于 Knowledge_Base
+3. 所有历史决策必须来源于 Memory_Center
+4. 所有战略规划必须记录进入 Strategy_Center
+5. 所有新知识必须进入 Learning_Center
+6. 未经知识库训练完成，庞统不得输出 AOEM 结论
+7. 未经知识库训练完成，华佗不得输出数学理论结论
+8. 未经知识库训练完成，庄周不得输出语言设计结论
+9. 所有任务必须经过赵云审计
+10. 审计失败二次复审，二次复审失败退回重做
+```
+
+## 3. WPF-MCP V3 项目命令
+
+```text
+【WPF-MCP V3】
 
 角色冻结：
 
 女娲（CAIO）
+伏羲（知识）
+仓颉（记忆）
+鬼谷子（战略）
+扁鹊（学习）
 诸葛亮（PM）
 墨子（架构）
 鲁班七号（数据库）
@@ -58,30 +91,15 @@ MCP/PROJECT_PACK_TEMPLATE.md
 庄周（新语言）
 赵云（审计）
 
-执行原则：
-
-1. 历史数据库不得删除
-2. 历史系统不得直接覆盖
-3. 先文档后开发
-4. 先设计后编码
-5. 所有任务必须经过赵云审计
-6. 审计失败二次复审
-7. 二次复审失败退回重做
-8. 涉及数据结构变更必须人工确认
-9. 涉及银行接口变更必须人工确认
-10. 涉及 AI 训练数据变更必须人工确认
-11. 涉及 AOEM 核心执行逻辑必须人工确认
-12. 涉及数学模型进入生产判断链路必须人工确认
-13. 涉及新语言主链路落地必须人工确认
-
 当前进入：
 
 Phase-1 文档建设阶段
 
-禁止直接编码
+禁止直接编码。
+必须先建立知识库、记忆中心、学习中心和专家训练登记。
 ```
 
-## 3. AOEM 专家任务命令
+## 4. AOEM 专家任务命令
 
 ```text
 【调用 庞统 / AOEM-001】
@@ -91,23 +109,20 @@ Phase-1 文档建设阶段
 
 必须读取：
 1. MCP/README.md
-2. MCP/MCP_V2_MASTER_CONTROL_PROTOCOL.md
+2. MCP/MCP_V3_MASTER_CONTROL_PROTOCOL.md
 3. MCP/AGENT_ROLE_MATRIX.md
 4. MCP/13_AOEM/README.md
-5. MCP/13_AOEM/aoem_core_spec.md
+5. MCP/16_Knowledge_Base/AOEM/README.md
+6. MCP/19_Learning_Center/expert_training_register.md
 
-输出要求：
-1. 说明 AOEM 能力边界
-2. 说明核心执行逻辑
-3. 说明 GPU/隐私计算调度策略
-4. 给出验证方法
-5. 标记是否需要 King Xu 人工确认
+输出限制：
+如庞统训练状态不是 TRAINED，只能输出资料缺口、学习计划、风险提示，不得输出 AOEM 定论。
 
 审计要求：
-赵云审计 + 墨子或张飞技术复核
+赵云审计 + 墨子或张飞技术复核 + 伏羲知识来源检查
 ```
 
-## 4. 数学专家任务命令
+## 5. 数学专家任务命令
 
 ```text
 【调用 华佗 / MATH-001】
@@ -117,23 +132,20 @@ Phase-1 文档建设阶段
 
 必须读取：
 1. MCP/README.md
-2. MCP/MCP_V2_MASTER_CONTROL_PROTOCOL.md
+2. MCP/MCP_V3_MASTER_CONTROL_PROTOCOL.md
 3. MCP/AGENT_ROLE_MATRIX.md
 4. MCP/14_Math/README.md
-5. MCP/14_Math/algebra_spec.md
+5. MCP/16_Knowledge_Base/README.md
+6. MCP/19_Learning_Center/expert_training_register.md
 
-输出要求：
-1. 定义数学对象和符号
-2. 列出假设和适用边界
-3. 给出推导或证明草案
-4. 给出验证方法和误差边界
-5. 标记是否需要二次确认
+输出限制：
+如华佗训练状态不是 TRAINED，只能输出假设、待验证问题和验证计划，不得输出数学理论定论。
 
 审计要求：
-赵云审计 + 数学模型二次确认
+赵云审计 + 数学模型二次确认 + 伏羲知识来源检查
 ```
 
-## 5. 新语言专家任务命令
+## 6. 新语言专家任务命令
 
 ```text
 【调用 庄周 / LANG-001】
@@ -143,23 +155,41 @@ Phase-1 文档建设阶段
 
 必须读取：
 1. MCP/README.md
-2. MCP/MCP_V2_MASTER_CONTROL_PROTOCOL.md
+2. MCP/MCP_V3_MASTER_CONTROL_PROTOCOL.md
 3. MCP/AGENT_ROLE_MATRIX.md
 4. MCP/15_Language/README.md
-5. MCP/15_Language/language_evolution_spec.md
+5. MCP/16_Knowledge_Base/AOEM/README.md
+6. MCP/19_Learning_Center/expert_training_register.md
 
-输出要求：
-1. 定义语言目标和非目标
-2. 定义语义模型和指令集边界
-3. 说明编译优化规则
-4. 给出 compiler-sanity-test
-5. 标记是否需要进入项目主链路
+输出限制：
+如庄周训练状态不是 TRAINED，只能输出语言研究计划、语义问题清单和原型边界，不得输出语言设计定论。
 
 审计要求：
-赵云审计 + 墨子架构审批
+赵云审计 + 墨子架构审批 + 伏羲知识来源检查
 ```
 
-## 6. 审计命令
+## 7. 记忆检索命令
+
+```text
+【调用 仓颉 / CMO-001】
+
+检索对象：
+<项目 / 架构 / 决策 / 失败经验 / 发布记录>
+
+必须读取：
+1. MCP/17_Memory_Center/README.md
+2. MCP/17_Memory_Center/decision_log.md
+3. MCP/17_Memory_Center/architecture_decision_record.md
+4. MCP/17_Memory_Center/failure_lessons.md
+
+输出要求：
+1. 相关历史记录
+2. 可复用经验
+3. 风险提醒
+4. 是否需要新记忆归档
+```
+
+## 8. 审计命令
 
 ```text
 【调用 赵云 / AUD-001】
@@ -168,7 +198,7 @@ Phase-1 文档建设阶段
 <任务编号或输出物路径>
 
 审计类型：
-<文档 / 代码 / 数据 / 安全 / AI / AOEM / 数学模型 / 新语言 / 发布>
+<文档 / 代码 / 数据 / 安全 / AI / AOEM / 数学模型 / 新语言 / 记忆 / 知识 / 发布>
 
 必须读取：
 1. 任务卡
@@ -176,6 +206,9 @@ Phase-1 文档建设阶段
 3. 输出物
 4. MCP/AUDIT_GATE_RULES.md
 5. 对应领域 README
+6. 知识库引用
+7. 记忆中心引用
+8. 专家训练状态
 
 输出要求：
 1. PASS 或 FAIL

@@ -15,7 +15,8 @@
 | 文档 | 路径 | 状态 | 责任角色 |
 |---|---|---|---|
 | MCP 总览 | `MCP/README.md` | DRAFT | 嬴政 / DOC-001 |
-| MCP V2 总控协议 | `MCP/MCP_V2_MASTER_CONTROL_PROTOCOL.md` | DRAFT | 女娲 / CAIO-001 |
+| MCP V3 总控协议 | `MCP/MCP_V3_MASTER_CONTROL_PROTOCOL.md` | DRAFT | 女娲 / CAIO-001 |
+| MCP V2.1 总控协议 | `MCP/MCP_V2_MASTER_CONTROL_PROTOCOL.md` | ARCHIVED | 女娲 / CAIO-001 |
 | Agent 角色矩阵 | `MCP/AGENT_ROLE_MATRIX.md` | DRAFT | 女娲 / CAIO-001 |
 | Codex 命令模板 | `MCP/CODEX_COMMAND_TEMPLATES.md` | DRAFT | 女娲 / 诸葛亮 |
 | 项目资料包模板 | `MCP/PROJECT_PACK_TEMPLATE.md` | DRAFT | 诸葛亮 / 嬴政 |
@@ -44,3 +45,7 @@
 | AOEM | `MCP/13_AOEM` | DRAFT | 庞统 / AOEM-001 |
 | 数学 | `MCP/14_Math` | DRAFT | 华佗 / MATH-001 |
 | 新语言 | `MCP/15_Language` | DRAFT | 庄周 / LANG-001 |
+| 知识库 | `MCP/16_Knowledge_Base` | DRAFT | 伏羲 / CKO-001 |
+| 记忆中心 | `MCP/17_Memory_Center` | DRAFT | 仓颉 / CMO-001 |
+| 战略中心 | `MCP/18_Strategy_Center` | DRAFT | 鬼谷子 / CSO-001 |
+| 学习中心 | `MCP/19_Learning_Center` | DRAFT | 扁鹊 / CLO-001 |

@@ -1,0 +1,17 @@
+# Expert Training Register
+
+## 状态定义
+
+- `UNTRAINED`：未训练，不得输出专业结论。
+- `LEARNING`：学习中，只能输出资料缺口和学习计划。
+- `REVIEW_READY`：待复核，可输出假设和验证计划。
+- `TRAINED`：已训练，可在知识库范围内输出专业结论。
+- `EXPIRED`：知识过期，必须重新训练。
+
+## 专家训练状态
+
+| 专家 | 代号 | 领域 | 当前状态 | 必须知识库 | 最近训练记录 | 输出限制 |
+|---|---|---|---|---|---|---|
+| 庞统 | AOEM-001 | AOEM 内核 | UNTRAINED | `MCP/16_Knowledge_Base/AOEM` | 待填写 | 不得输出 AOEM 定论 |
+| 华佗 | MATH-001 | 代数语义与数学模型 | UNTRAINED | `MCP/16_Knowledge_Base/AOEM`、`MCP/14_Math` | 待填写 | 不得输出数学理论定论 |
+| 庄周 | LANG-001 | 新语言与指令集 | UNTRAINED | `MCP/16_Knowledge_Base/AOEM`、`MCP/15_Language` | 待填写 | 不得输出语言设计定论 |
