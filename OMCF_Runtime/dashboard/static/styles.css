@@ -389,7 +389,9 @@ h3 {
 .status-running,
 .task-complete,
 .provider-available,
-.provider-provider_executed {
+.provider-provider_executed,
+.provider-ready_for_safe_execution,
+.task-ready {
   background: #dbeafe;
   color: #1d4ed8;
 }
@@ -400,13 +402,20 @@ h3 {
 }
 
 .status-audit,
-.provider-blocked_openai_api_key_missing {
+.provider-blocked_openai_api_key_missing,
+.provider-blocked_production_default_deny,
+.provider-rejected,
+.task-blocked {
   background: #fee2e2;
   color: #b91c1c;
 }
 
 .status-human,
-.task-human {
+.task-human,
+.task-gated,
+.provider-wait_human_approval,
+.provider-wait_audit_pass,
+.provider-wait_gate {
   background: #fef3c7;
   color: #92400e;
 }
@@ -415,7 +424,8 @@ h3 {
 .task-queued,
 .task-waiting,
 .provider-adapter_required,
-.provider-deprecated_alias {
+.provider-deprecated_alias,
+.provider-safe_execution_queued {
   background: #f1f5f9;
   color: #475569;
 }
@@ -699,6 +709,63 @@ h3 {
   box-shadow: none;
 }
 
+.command-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.command-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.command-main strong {
+  color: var(--dark);
+}
+
+.command-meta,
+.gate-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.command-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.gate-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gate-pass {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.gate-waiting {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.gate-blocked {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -732,8 +799,13 @@ h3 {
   .timeline-item,
   .queue-row,
   .trace-row,
-  .trace-summary {
+  .trace-summary,
+  .command-main {
     grid-template-columns: 1fr;
+  }
+
+  .command-main {
+    display: grid;
   }
 
   .queue-actions {

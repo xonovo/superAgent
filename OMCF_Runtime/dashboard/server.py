@@ -32,6 +32,39 @@ PROJECT_MEMORY_DIR = (
 )
 DECISION_LOG = STATE_DIR / "human_queue_decisions.jsonl"
 RUN_REQUEST_LOG = STATE_DIR / "run_requests.jsonl"
+SAFE_EXECUTION_EVENT_LOG = STATE_DIR / "safe_execution_events.jsonl"
+SAFE_EXECUTION_QUEUE_LOG = STATE_DIR / "safe_execution_queue.jsonl"
+PRODUCTION_ALLOWLIST_FILE = STATE_DIR / "production_allowlist.json"
+
+TASK_TYPE_POLICIES: dict[str, dict[str, Any]] = {
+    "document": {
+        "risk": "low",
+        "required_gates": ["dry_run"],
+        "execution_mode": "safe_queue_document",
+    },
+    "code": {
+        "risk": "medium",
+        "required_gates": ["dry_run", "audit_pass"],
+        "execution_mode": "safe_queue_codex_read_only",
+    },
+    "restricted": {
+        "risk": "high",
+        "required_gates": ["dry_run", "human_approval", "audit_pass"],
+        "execution_mode": "safe_queue_requires_operator",
+    },
+    "production": {
+        "risk": "critical",
+        "required_gates": ["dry_run", "production_whitelist", "human_approval", "audit_pass"],
+        "execution_mode": "blocked_by_default",
+    },
+}
+
+GATE_LABELS = {
+    "dry_run": "Dry Run",
+    "human_approval": "King Xu Approval",
+    "audit_pass": "Zhao Yun Audit",
+    "production_whitelist": "Production Whitelist",
+}
 
 
 ROLE_CATALOG: list[dict[str, Any]] = [
@@ -282,6 +315,10 @@ class StartRunRequest(BaseModel):
     note: str | None = None
 
 
+class CommandEventRequest(BaseModel):
+    note: str | None = None
+
+
 app = FastAPI(title="OMCF Dashboard Alpha", version="alpha")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -392,15 +429,236 @@ def load_queue_decisions() -> dict[str, dict[str, Any]]:
     return decisions
 
 
-def load_run_requests() -> list[dict[str, Any]]:
+def load_run_requests(tasks: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     rows = read_jsonl(RUN_REQUEST_LOG)
-    return [row for row in rows if row.get("command_id")]
+    events = load_safe_execution_events()
+    return [
+        enrich_command(row, events.get(row["command_id"], []), tasks or [])
+        for row in rows
+        if row.get("command_id")
+    ]
 
 
 def append_jsonl(path: Path, row: dict[str, Any]) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as file:
         file.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def load_safe_execution_events() -> dict[str, list[dict[str, Any]]]:
+    events: dict[str, list[dict[str, Any]]] = {}
+    for row in read_jsonl(SAFE_EXECUTION_EVENT_LOG):
+        command_id = row.get("command_id")
+        if command_id:
+            events.setdefault(command_id, []).append(row)
+    return events
+
+
+def load_production_allowlist() -> set[str]:
+    payload = read_json(PRODUCTION_ALLOWLIST_FILE, {})
+    if isinstance(payload, dict):
+        return set(payload.get("command_ids", []))
+    if isinstance(payload, list):
+        return set(payload)
+    return set()
+
+
+def classify_task(task: dict[str, Any] | None, command: dict[str, Any]) -> dict[str, Any]:
+    title = str(command.get("task_title") or (task or {}).get("title") or "")
+    note = str(command.get("note") or "")
+    phase = str((task or {}).get("phase") or "")
+    artifact = str((task or {}).get("artifact") or "")
+    agent_id = str(command.get("agent_id") or (task or {}).get("assignee") or "")
+    text = " ".join([title, note, phase, artifact, agent_id]).lower()
+
+    production_keywords = ["生产", "production", "prod", "上线", "release"]
+    restricted_keywords = [
+        "数据库",
+        "database",
+        "schema",
+        "ddl",
+        "银行",
+        "bank",
+        "支付",
+        "payment",
+        "aoem",
+        "部署",
+        "deploy",
+        "docker",
+        "k8s",
+        "gpu",
+        "隐私计算",
+        "privacy",
+    ]
+    code_keywords = [
+        "代码",
+        "code",
+        "backend",
+        "frontend",
+        "mobile",
+        "sdk",
+        "api",
+        "实现",
+        "开发",
+        "编译",
+    ]
+
+    if any(keyword in text for keyword in production_keywords):
+        task_type = "production"
+    elif agent_id in {"DB-001", "API-001", "OPS-001", "AOEM-001"} or any(
+        keyword in text for keyword in restricted_keywords
+    ):
+        task_type = "restricted"
+    elif agent_id in {"BE-001", "FE-001", "MOB-001"} or any(keyword in text for keyword in code_keywords):
+        task_type = "code"
+    else:
+        task_type = "document"
+
+    policy = TASK_TYPE_POLICIES[task_type]
+    return {
+        "task_type": task_type,
+        "risk": policy["risk"],
+        "required_gates": policy["required_gates"],
+        "execution_mode": policy["execution_mode"],
+        "production_default_denied": task_type == "production",
+        "matched_text": title,
+    }
+
+
+def gate_passed(gate_id: str, events: list[dict[str, Any]], classification: dict[str, Any]) -> bool:
+    if gate_id == "dry_run":
+        return True
+    if gate_id == "human_approval":
+        return any(event.get("type") == "HUMAN_APPROVAL_GRANTED" for event in events)
+    if gate_id == "audit_pass":
+        return any(event.get("type") == "AUDIT_PASSED" for event in events)
+    if gate_id == "production_whitelist":
+        return any(event.get("type") == "PRODUCTION_WHITELIST_GRANTED" for event in events)
+    return False
+
+
+def command_task_lookup(tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {task["id"]: task for task in tasks if task.get("id")}
+
+
+def enrich_command(
+    command: dict[str, Any],
+    events: list[dict[str, Any]],
+    tasks: list[dict[str, Any]],
+) -> dict[str, Any]:
+    task = command_task_lookup(tasks).get(command.get("task_id", ""))
+    classification = classify_task(task, command)
+    allowlisted_ids = load_production_allowlist()
+    if command.get("command_id") in allowlisted_ids:
+        events = [
+            *events,
+            {
+                "type": "PRODUCTION_WHITELIST_GRANTED",
+                "source": "production_allowlist.json",
+                "recorded_at": datetime.now().isoformat(timespec="seconds"),
+            },
+        ]
+
+    dry_run = {
+        "status": "PASS",
+        "task_type": classification["task_type"],
+        "risk": classification["risk"],
+        "execution_mode": classification["execution_mode"],
+        "production_default_denied": classification["production_default_denied"],
+        "sandbox": "read-only",
+        "checks": [
+            "Classify task risk",
+            "Resolve required gates",
+            "Block production by default",
+            "Keep execution inside Dashboard state queue",
+        ],
+    }
+    required_gates = classification["required_gates"]
+    gates = []
+    missing = []
+    for gate_id in required_gates:
+        passed = gate_passed(gate_id, events, classification)
+        if not passed:
+            missing.append(gate_id)
+        gates.append(
+            {
+                "id": gate_id,
+                "label": GATE_LABELS[gate_id],
+                "required": True,
+                "status": "PASS" if passed else "WAITING",
+            }
+        )
+
+    rejected = any(event.get("type") in {"HUMAN_REJECTED", "AUDIT_REJECTED"} for event in events)
+    queued = any(event.get("type") == "SAFE_EXECUTION_QUEUED" for event in events)
+    if rejected:
+        status = "REJECTED"
+    elif queued:
+        status = "SAFE_EXECUTION_QUEUED"
+    elif "production_whitelist" in missing:
+        status = "BLOCKED_PRODUCTION_DEFAULT_DENY"
+    elif "human_approval" in missing:
+        status = "WAIT_HUMAN_APPROVAL"
+    elif "audit_pass" in missing:
+        status = "WAIT_AUDIT_PASS"
+    elif missing:
+        status = "WAIT_GATE"
+    else:
+        status = "READY_FOR_SAFE_EXECUTION"
+
+    enriched = dict(command)
+    enriched.update(
+        {
+            "status": status,
+            "dry_run": dry_run,
+            "gates": gates,
+            "missing_gates": missing,
+            "events": events,
+            "safe_execution": {
+                "can_execute": status == "READY_FOR_SAFE_EXECUTION",
+                "queue_status": "queued" if queued else "not_queued",
+                "production_default_denied": classification["production_default_denied"],
+            },
+        }
+    )
+    return enriched
+
+
+def build_safe_execution_packet(command: dict[str, Any]) -> dict[str, Any]:
+    command_id = command["command_id"]
+    output_dir = STATE_DIR / "safe_execution" / command_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    packet_path = output_dir / "task_packet.json"
+    packet = {
+        "task_id": command.get("task_id"),
+        "command_id": command_id,
+        "project": command.get("project"),
+        "agent_id": command.get("agent_id"),
+        "agent": command.get("agent"),
+        "task_title": command.get("task_title"),
+        "provider_id": "provider.codex",
+        "sandbox": "read-only",
+        "execution_mode": command.get("dry_run", {}).get("execution_mode"),
+        "prompt": (
+            "Execute this OMCF task only within the documented safe boundary. "
+            "Do not change databases, bank interfaces, AOEM runtime, deployment, or production systems. "
+            f"Task: {command.get('task_title')}"
+        ),
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "dashboard_alpha_only": True,
+    }
+    packet_path.write_text(json.dumps(packet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return {
+        "packet": packet,
+        "packet_path": display_path(packet_path),
+    }
 
 
 def load_provider_invocations() -> list[dict[str, Any]]:
@@ -602,7 +860,7 @@ def build_tasks(commands: list[dict[str, Any]] | None = None) -> list[dict[str, 
         command = command_by_task.get(task_id)
         status = "complete" if exists else "waiting"
         if command and status != "complete":
-            status = "queued"
+            status = task_status_from_command(command)
         tasks.append(
             {
                 "id": task_id,
@@ -652,12 +910,25 @@ def build_tasks(commands: list[dict[str, Any]] | None = None) -> list[dict[str, 
     for task in next_tasks:
         command = command_by_task.get(task["id"])
         if command:
-            task["status"] = "queued"
+            task["status"] = task_status_from_command(command)
             task["last_command"] = command
         else:
             task["last_command"] = None
     tasks.extend(next_tasks)
     return tasks
+
+
+def task_status_from_command(command: dict[str, Any]) -> str:
+    command_status = command.get("status")
+    if command_status == "READY_FOR_SAFE_EXECUTION":
+        return "ready"
+    if command_status == "SAFE_EXECUTION_QUEUED":
+        return "queued"
+    if command_status in {"BLOCKED_PRODUCTION_DEFAULT_DENY", "REJECTED"}:
+        return "blocked"
+    if str(command_status).startswith("WAIT_"):
+        return "gated"
+    return "queued"
 
 
 def build_timeline(invocations: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -687,7 +958,8 @@ def build_snapshot() -> dict[str, Any]:
     metrics = load_metrics()
     queue = load_human_queue()
     invocations = load_provider_invocations()
-    commands = load_run_requests()
+    base_tasks = build_tasks([])
+    commands = load_run_requests(base_tasks)
     providers = load_providers(invocations)
     agents = build_agents(profiles, metrics, queue, invocations)
     tasks = build_tasks(commands)
@@ -716,6 +988,15 @@ def build_snapshot() -> dict[str, Any]:
         "provider_invocations": invocations,
         "timeline": build_timeline(invocations),
         "commands": commands[-20:],
+        "safe_execution_summary": {
+            "ready": sum(1 for command in commands if command.get("status") == "READY_FOR_SAFE_EXECUTION"),
+            "waiting_human": sum(1 for command in commands if command.get("status") == "WAIT_HUMAN_APPROVAL"),
+            "waiting_audit": sum(1 for command in commands if command.get("status") == "WAIT_AUDIT_PASS"),
+            "queued": sum(1 for command in commands if command.get("status") == "SAFE_EXECUTION_QUEUED"),
+            "blocked_production": sum(
+                1 for command in commands if command.get("status") == "BLOCKED_PRODUCTION_DEFAULT_DENY"
+            ),
+        },
     }
 
 
@@ -793,7 +1074,112 @@ def start_run(request: StartRunRequest) -> dict[str, Any]:
         "suggested_next_step": "Hand this command to the existing OMCF Runtime or Codex provider adapter after human confirmation.",
     }
     append_jsonl(RUN_REQUEST_LOG, row)
-    return {"ok": True, "command": row}
+    enriched = enrich_command(row, [], list(tasks.values()))
+    append_jsonl(
+        SAFE_EXECUTION_EVENT_LOG,
+        {
+            "command_id": command_id,
+            "type": "DRY_RUN_COMPLETED",
+            "status": enriched["dry_run"]["status"],
+            "task_type": enriched["dry_run"]["task_type"],
+            "risk": enriched["dry_run"]["risk"],
+            "recorded_at": datetime.now().isoformat(timespec="seconds"),
+            "dashboard_alpha_only": True,
+        },
+    )
+    return {"ok": True, "command": enrich_command(row, load_safe_execution_events().get(command_id, []), list(tasks.values()))}
+
+
+def get_command_or_404(command_id: str) -> dict[str, Any]:
+    commands = load_run_requests(build_tasks([]))
+    command = next((item for item in commands if item.get("command_id") == command_id), None)
+    if not command:
+        raise HTTPException(status_code=404, detail="command_id not found")
+    return command
+
+
+def record_command_event(command_id: str, event_type: str, note: str | None = None) -> dict[str, Any]:
+    command = get_command_or_404(command_id)
+    row = {
+        "command_id": command_id,
+        "type": event_type,
+        "note": note or "",
+        "recorded_at": datetime.now().isoformat(timespec="seconds"),
+        "recorded_by": "King Xu" if "HUMAN" in event_type else "赵云",
+        "dashboard_alpha_only": True,
+        "runtime_core_changed": False,
+    }
+    append_jsonl(SAFE_EXECUTION_EVENT_LOG, row)
+    return enrich_command(command, load_safe_execution_events().get(command_id, []), build_tasks([]))
+
+
+@app.post("/api/commands/{command_id}/dry-run")
+def command_dry_run(command_id: str, request: CommandEventRequest | None = None) -> dict[str, Any]:
+    command = get_command_or_404(command_id)
+    row = {
+        "command_id": command_id,
+        "type": "DRY_RUN_COMPLETED",
+        "status": command["dry_run"]["status"],
+        "task_type": command["dry_run"]["task_type"],
+        "risk": command["dry_run"]["risk"],
+        "note": (request.note if request else None) or "Dry run refreshed from Command Center",
+        "recorded_at": datetime.now().isoformat(timespec="seconds"),
+        "dashboard_alpha_only": True,
+    }
+    append_jsonl(SAFE_EXECUTION_EVENT_LOG, row)
+    return {"ok": True, "command": get_command_or_404(command_id)}
+
+
+@app.post("/api/commands/{command_id}/approve")
+def approve_command(command_id: str, request: CommandEventRequest | None = None) -> dict[str, Any]:
+    command = record_command_event(command_id, "HUMAN_APPROVAL_GRANTED", (request.note if request else None))
+    return {"ok": True, "command": command}
+
+
+@app.post("/api/commands/{command_id}/reject")
+def reject_command(command_id: str, request: CommandEventRequest | None = None) -> dict[str, Any]:
+    command = record_command_event(command_id, "HUMAN_REJECTED", (request.note if request else None))
+    return {"ok": True, "command": command}
+
+
+@app.post("/api/commands/{command_id}/audit-pass")
+def audit_pass_command(command_id: str, request: CommandEventRequest | None = None) -> dict[str, Any]:
+    current = get_command_or_404(command_id)
+    missing = current.get("missing_gates", [])
+    if "production_whitelist" in missing:
+        raise HTTPException(status_code=409, detail="Production whitelist is required before audit pass.")
+    if "human_approval" in missing:
+        raise HTTPException(status_code=409, detail="King Xu approval is required before audit pass.")
+    command = record_command_event(command_id, "AUDIT_PASSED", (request.note if request else None))
+    return {"ok": True, "command": command}
+
+
+@app.post("/api/commands/{command_id}/execute")
+def execute_command(command_id: str, request: CommandEventRequest | None = None) -> dict[str, Any]:
+    command = get_command_or_404(command_id)
+    if command.get("status") != "READY_FOR_SAFE_EXECUTION":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Command is not ready for safe execution.",
+                "status": command.get("status"),
+                "missing_gates": command.get("missing_gates", []),
+            },
+        )
+    packet = build_safe_execution_packet(command)
+    row = {
+        "command_id": command_id,
+        "type": "SAFE_EXECUTION_QUEUED",
+        "status": "QUEUED_FOR_RUNTIME_DISPATCH",
+        "packet_path": packet["packet_path"],
+        "note": (request.note if request else None) or "",
+        "recorded_at": datetime.now().isoformat(timespec="seconds"),
+        "dashboard_alpha_only": True,
+        "runtime_core_changed": False,
+    }
+    append_jsonl(SAFE_EXECUTION_EVENT_LOG, row)
+    append_jsonl(SAFE_EXECUTION_QUEUE_LOG, row)
+    return {"ok": True, "command": get_command_or_404(command_id), "packet": packet}
 
 
 @app.get("/api/agents/{agent_id}/timeline")

@@ -26,14 +26,14 @@ function agentName(agentId) {
 function renderSummary(snapshot) {
   const running = snapshot.agents.filter((agent) => agent.status === "running").length;
   const queue = snapshot.human_queue.filter((item) => item.queue_status === "pending").length;
-  const providers = snapshot.providers.filter((provider) => provider.enabled).length;
-  const completion = Math.round(snapshot.task_summary.completion_rate * 100);
   const commands = snapshot.commands?.length || 0;
+  const safeReady = snapshot.safe_execution_summary?.ready || 0;
+  const safeQueued = snapshot.safe_execution_summary?.queued || 0;
   byId("summary-grid").innerHTML = `
     <div class="summary-item"><span>Running Agents</span><strong>${running}</strong></div>
-    <div class="summary-item"><span>Task Completion</span><strong>${completion}%</strong></div>
+    <div class="summary-item"><span>Safe Ready</span><strong>${safeReady}</strong></div>
     <div class="summary-item"><span>Human Queue</span><strong>${queue}</strong></div>
-    <div class="summary-item"><span>Commands</span><strong>${commands}</strong></div>
+    <div class="summary-item"><span>Commands / Queue</span><strong>${commands}/${safeQueued}</strong></div>
   `;
 }
 
@@ -180,18 +180,7 @@ function renderCommandLog(snapshot) {
   return commands
     .slice()
     .reverse()
-    .map(
-      (command) => `
-        <article class="trace-row">
-          <div>
-            <strong>${escapeHtml(command.task_title)}</strong>
-            <div class="artifact">${escapeHtml(command.command_id)}</div>
-          </div>
-          <div class="small">${escapeHtml(command.agent)} · ${escapeHtml(command.status)}</div>
-          <div class="small">${escapeHtml(command.created_at)}</div>
-        </article>
-      `,
-    )
+    .map(renderCommandCard)
     .join("");
 }
 
@@ -257,7 +246,12 @@ function snapshotSignature(snapshot) {
       provider.last_status || "",
     ]),
     timeline: snapshot.timeline.length,
-    commands: snapshot.commands?.map((command) => [command.command_id, command.status]) || [],
+    commands:
+      snapshot.commands?.map((command) => [
+        command.command_id,
+        command.status,
+        command.events?.length || 0,
+      ]) || [],
   });
 }
 
@@ -300,14 +294,7 @@ async function startRun(taskId = "NEXT-001") {
   const result = await response.json();
   await loadSnapshot();
   showDetail("Command", "启动请求已创建", `
-    <article class="trace-row">
-      <div>
-        <strong>${escapeHtml(result.command.task_title)}</strong>
-        <div class="artifact">${escapeHtml(result.command.command_id)}</div>
-      </div>
-      <div class="small">${escapeHtml(result.command.status)}</div>
-      <div class="small">${escapeHtml(result.command.suggested_next_step)}</div>
-    </article>
+    ${renderCommandCard(result.command)}
   `);
 }
 
@@ -434,19 +421,84 @@ function renderTraceCommands(commands) {
   return commands
     .slice()
     .reverse()
-    .map(
-      (item) => `
-        <article class="trace-row">
-          <div>
-            <strong>${escapeHtml(item.type)}</strong>
-            <div class="artifact">${escapeHtml(item.command_id)}</div>
-          </div>
-          <div class="small">${escapeHtml(item.status)} · ${escapeHtml(item.created_at)}</div>
-          <span class="status-pill status-waiting">${escapeHtml(item.runtime_handoff_status)}</span>
-        </article>
-      `,
-    )
+    .map(renderCommandCard)
     .join("");
+}
+
+function renderCommandCard(command) {
+  return `
+    <article class="command-card">
+      <div class="command-main">
+        <div>
+          <strong>${escapeHtml(command.task_title)}</strong>
+          <div class="artifact">${escapeHtml(command.command_id)}</div>
+        </div>
+        <span class="provider-status ${statusClass(command.status, "provider")}">${escapeHtml(command.status)}</span>
+      </div>
+      <div class="command-meta">
+        <span>${escapeHtml(command.agent)}</span>
+        <span>${escapeHtml(command.dry_run?.task_type || "unknown")}</span>
+        <span>risk: ${escapeHtml(command.dry_run?.risk || "unknown")}</span>
+        <span>${escapeHtml(command.created_at)}</span>
+      </div>
+      <div class="gate-row">${renderGateChips(command)}</div>
+      <div class="command-actions">${renderCommandActions(command)}</div>
+    </article>
+  `;
+}
+
+function renderGateChips(command) {
+  const gates = command.gates || [];
+  if (!gates.length) return `<span class="gate-chip gate-waiting">No gates</span>`;
+  return gates
+    .map((gate) => {
+      const passed = gate.status === "PASS";
+      return `<span class="gate-chip ${passed ? "gate-pass" : "gate-waiting"}">${escapeHtml(gate.label)} · ${escapeHtml(gate.status)}</span>`;
+    })
+    .join("");
+}
+
+function renderCommandActions(command) {
+  const buttons = [
+    `<button class="mini-button command-action-button" data-command-action="dry-run" data-command-id="${escapeHtml(command.command_id)}">Dry Run</button>`,
+  ];
+  const missing = command.missing_gates || [];
+  if (command.status === "REJECTED") {
+    buttons.push(`<span class="gate-chip gate-blocked">已拒绝</span>`);
+    return buttons.join("");
+  }
+  if (missing.includes("production_whitelist")) {
+    buttons.push(`<span class="gate-chip gate-blocked">生产默认禁止，需手动白名单</span>`);
+  } else if (missing.includes("human_approval")) {
+    buttons.push(
+      `<button class="mini-button command-action-button" data-command-action="approve" data-command-id="${escapeHtml(command.command_id)}">King Xu 批准</button>`,
+      `<button class="mini-button command-action-button" data-command-action="reject" data-command-id="${escapeHtml(command.command_id)}">拒绝</button>`,
+    );
+  } else if (missing.includes("audit_pass")) {
+    buttons.push(
+      `<button class="mini-button command-action-button" data-command-action="audit-pass" data-command-id="${escapeHtml(command.command_id)}">赵云审计通过</button>`,
+    );
+  } else if (command.safe_execution?.can_execute) {
+    buttons.push(
+      `<button class="primary-button command-action-button" data-command-action="execute" data-command-id="${escapeHtml(command.command_id)}">安全执行</button>`,
+    );
+  }
+  if (command.status === "SAFE_EXECUTION_QUEUED") {
+    buttons.push(`<span class="gate-chip gate-pass">已进入 Safe Execution Queue</span>`);
+  }
+  return buttons.join("");
+}
+
+async function commandAction(commandId, action) {
+  const response = await fetch(`/api/commands/${encodeURIComponent(commandId)}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note: "Recorded from Command Center Safe Execution UI" }),
+  });
+  if (!response.ok) throw new Error("command action failed");
+  const result = await response.json();
+  await loadSnapshot();
+  showDetail("Safe Execution", "门禁状态已更新", renderCommandCard(result.command));
 }
 
 function showDetail(kicker, title, body) {
@@ -496,6 +548,14 @@ document.addEventListener("click", (event) => {
   if (taskTrace) {
     showTaskTrace(taskTrace.dataset.taskId).catch(() => {
       byId("socket-label").textContent = "Trace failed";
+    });
+    return;
+  }
+
+  const commandActionButton = event.target.closest(".command-action-button");
+  if (commandActionButton) {
+    commandAction(commandActionButton.dataset.commandId, commandActionButton.dataset.commandAction).catch(() => {
+      byId("socket-label").textContent = "Gate action failed";
     });
     return;
   }
