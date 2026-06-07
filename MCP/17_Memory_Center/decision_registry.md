@@ -26,6 +26,7 @@ Decision Registry 不替代 ADR。ADR 记录架构决策细节，Decision Regist
 | DEC-V4-0003 | 待填写 | PROJECT | Project Memory 按需创建 | 模板化按需创建 | 预设项目槽位 | 防止空项目和知识污染 | 所有项目 | 待填写 | DRAFT |
 | DEC-RUNTIME-0001 | 2026-06-07 | ARCHITECTURE | Freeze OMCF Runtime V2.6 and stop version-chasing | V2.6 as Control Plane baseline | Continue V2.7/V2.8 before production | Real execution is more valuable than more control-plane design | OMCF Runtime, Providers, Production Runs | ADR-0002 | ACCEPTED |
 | DEC-PROD-0001 | 2026-06-07 | PROJECT | Start real project memory for Zhuzhou Property Supervision Platform | Create Zhuzhou_Property_Platform memory because project is explicitly started | Keep all production artifacts only in ignored runtime runs | Production execution needs auditable committed memory | Zhuzhou Property Supervision Platform | ADR-0002 | ACCEPTED |
+| DEC-ALPHA-0001 | 2026-06-08 | PROJECT | Do not fake unavailable providers during Alpha Run | Record GPT as blocked when API configuration is missing | Treat current Codex output as GPT or simulate GPT response | Provider credibility depends on honest execution evidence | OMCF Alpha Run, Provider Governance | ADR-0002 | ACCEPTED |
 
 ## 4. 强制规则
 
