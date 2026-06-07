@@ -1,0 +1,8 @@
+{
+  "task_id": "NEXT-001",
+  "command_id": "DASH-RUN-20260608-023623-c8b672",
+  "agent_id": "PM-001",
+  "project": "Zhuzhou Property Platform",
+  "output_name": "02_worker_output.md",
+  "prompt": "You are OMCF Safe Execution Worker Alpha.\n\nTask:\nProject Pack V1 intake document\n\nAgent:\n诸葛亮 (PM-001)\n\nProject:\nZhuzhou Property Platform\n\nSafe boundary:\n- Generate a Markdown document or project plan only.\n- Do not modify repository files.\n- Do not create code patches.\n- Do not touch databases, bank/payment interfaces, AOEM runtime, deployment, production, credentials, or destructive operations.\n- Produce concise deliverable sections: objective, assumptions, required inputs, execution steps, risks, and next audit checklist.\n"
+}

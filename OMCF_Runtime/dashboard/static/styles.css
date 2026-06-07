@@ -391,6 +391,7 @@ h3 {
 .provider-available,
 .provider-provider_executed,
 .provider-ready_for_safe_execution,
+.provider-worker_completed,
 .task-ready {
   background: #dbeafe;
   color: #1d4ed8;
@@ -405,6 +406,8 @@ h3 {
 .provider-blocked_openai_api_key_missing,
 .provider-blocked_production_default_deny,
 .provider-rejected,
+.provider-worker_failed,
+.provider-worker_rejected,
 .task-blocked {
   background: #fee2e2;
   color: #b91c1c;

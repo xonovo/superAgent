@@ -29,11 +29,12 @@ function renderSummary(snapshot) {
   const commands = snapshot.commands?.length || 0;
   const safeReady = snapshot.safe_execution_summary?.ready || 0;
   const safeQueued = snapshot.safe_execution_summary?.queued || 0;
+  const workerDone = snapshot.worker_summary?.completed || 0;
   byId("summary-grid").innerHTML = `
     <div class="summary-item"><span>Running Agents</span><strong>${running}</strong></div>
     <div class="summary-item"><span>Safe Ready</span><strong>${safeReady}</strong></div>
-    <div class="summary-item"><span>Human Queue</span><strong>${queue}</strong></div>
     <div class="summary-item"><span>Commands / Queue</span><strong>${commands}/${safeQueued}</strong></div>
+    <div class="summary-item"><span>Worker Done</span><strong>${workerDone}</strong></div>
   `;
 }
 
@@ -252,6 +253,7 @@ function snapshotSignature(snapshot) {
         command.status,
         command.events?.length || 0,
       ]) || [],
+    worker: snapshot.worker_summary?.last_event || null,
   });
 }
 
@@ -484,12 +486,25 @@ function renderCommandActions(command) {
     );
   }
   if (command.status === "SAFE_EXECUTION_QUEUED") {
-    buttons.push(`<span class="gate-chip gate-pass">已进入 Safe Execution Queue</span>`);
+    buttons.push(
+      `<span class="gate-chip gate-pass">已进入 Safe Execution Queue</span>`,
+      `<button class="mini-button command-action-button" data-command-action="worker-dry-run" data-command-id="${escapeHtml(command.command_id)}">Worker Dry Run</button>`,
+      `<button class="primary-button command-action-button" data-command-action="worker-execute" data-command-id="${escapeHtml(command.command_id)}">Worker 执行</button>`,
+    );
+  }
+  if (command.status === "WORKER_COMPLETED") {
+    buttons.push(`<span class="gate-chip gate-pass">Worker 已完成</span>`);
+  }
+  if (command.status === "WORKER_FAILED" || command.status === "WORKER_REJECTED") {
+    buttons.push(`<span class="gate-chip gate-blocked">${escapeHtml(command.status)}</span>`);
   }
   return buttons.join("");
 }
 
 async function commandAction(commandId, action) {
+  if (action === "worker-dry-run" || action === "worker-execute") {
+    return workerRun(commandId, action === "worker-dry-run");
+  }
   const response = await fetch(`/api/commands/${encodeURIComponent(commandId)}/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -499,6 +514,37 @@ async function commandAction(commandId, action) {
   const result = await response.json();
   await loadSnapshot();
   showDetail("Safe Execution", "门禁状态已更新", renderCommandCard(result.command));
+}
+
+async function workerRun(commandId, dryRun) {
+  const response = await fetch("/api/worker/run-once", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      command_id: commandId,
+      dry_run: dryRun,
+      limit: 1,
+      timeout_seconds: 300,
+    }),
+  });
+  if (!response.ok) throw new Error("worker run failed");
+  const result = await response.json();
+  await loadSnapshot();
+  const rows = result.worker.results
+    .map(
+      (item) => `
+        <article class="trace-row">
+          <div>
+            <strong>${escapeHtml(item.status)}</strong>
+            <div class="artifact">${escapeHtml(item.output_dir || item.reasons?.join("; ") || "")}</div>
+          </div>
+          <div class="small">${escapeHtml(item.provider_status || "")}</div>
+          <span class="status-pill ${item.status === "WORKER_COMPLETED" ? "status-complete" : "status-waiting"}">${dryRun ? "Dry Run" : "Worker"}</span>
+        </article>
+      `,
+    )
+    .join("");
+  showDetail("Safe Execution Worker", dryRun ? "Worker Dry Run" : "Worker 执行结果", rows || `<div class="empty-state">Worker 没有可处理命令。</div>`);
 }
 
 function showDetail(kicker, title, body) {

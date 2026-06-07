@@ -319,6 +319,13 @@ class CommandEventRequest(BaseModel):
     note: str | None = None
 
 
+class WorkerRunRequest(BaseModel):
+    command_id: str | None = None
+    dry_run: bool = True
+    limit: int = 1
+    timeout_seconds: int = 300
+
+
 app = FastAPI(title="OMCF Dashboard Alpha", version="alpha")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -598,8 +605,17 @@ def enrich_command(
 
     rejected = any(event.get("type") in {"HUMAN_REJECTED", "AUDIT_REJECTED"} for event in events)
     queued = any(event.get("type") == "SAFE_EXECUTION_QUEUED" for event in events)
+    worker_completed = any(event.get("type") == "WORKER_COMPLETED" for event in events)
+    worker_failed = any(event.get("type") == "WORKER_FAILED" for event in events)
+    worker_rejected = any(event.get("type") == "WORKER_REJECTED" for event in events)
     if rejected:
         status = "REJECTED"
+    elif worker_completed:
+        status = "WORKER_COMPLETED"
+    elif worker_failed:
+        status = "WORKER_FAILED"
+    elif worker_rejected:
+        status = "WORKER_REJECTED"
     elif queued:
         status = "SAFE_EXECUTION_QUEUED"
     elif "production_whitelist" in missing:
@@ -623,6 +639,7 @@ def enrich_command(
             "events": events,
             "safe_execution": {
                 "can_execute": status == "READY_FOR_SAFE_EXECUTION",
+                "can_worker_run": status == "SAFE_EXECUTION_QUEUED",
                 "queue_status": "queued" if queued else "not_queued",
                 "production_default_denied": classification["production_default_denied"],
             },
@@ -965,6 +982,7 @@ def build_snapshot() -> dict[str, Any]:
     tasks = build_tasks(commands)
     completed = sum(1 for task in tasks if task["status"] == "complete")
 
+    worker_summary = load_worker_summary()
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "project": {
@@ -997,6 +1015,20 @@ def build_snapshot() -> dict[str, Any]:
                 1 for command in commands if command.get("status") == "BLOCKED_PRODUCTION_DEFAULT_DENY"
             ),
         },
+        "worker_summary": worker_summary,
+    }
+
+
+def load_worker_summary() -> dict[str, Any]:
+    worker_log = STATE_DIR / "safe_worker_events.jsonl"
+    rows = read_jsonl(worker_log)
+    return {
+        "events": len(rows),
+        "completed": sum(1 for row in rows if row.get("status") == "WORKER_COMPLETED"),
+        "rejected": sum(1 for row in rows if row.get("status") == "WORKER_REJECTED"),
+        "failed": sum(1 for row in rows if row.get("status") == "WORKER_FAILED"),
+        "dry_run_pass": sum(1 for row in rows if row.get("status") == "WORKER_DRY_RUN_PASS"),
+        "last_event": rows[-1] if rows else None,
     }
 
 
@@ -1180,6 +1212,19 @@ def execute_command(command_id: str, request: CommandEventRequest | None = None)
     append_jsonl(SAFE_EXECUTION_EVENT_LOG, row)
     append_jsonl(SAFE_EXECUTION_QUEUE_LOG, row)
     return {"ok": True, "command": get_command_or_404(command_id), "packet": packet}
+
+
+@app.post("/api/worker/run-once")
+def run_worker_once(request: WorkerRunRequest) -> dict[str, Any]:
+    from OMCF_Runtime.dashboard.safe_worker import run_once
+
+    result = run_once(
+        command_id=request.command_id,
+        dry_run=request.dry_run,
+        limit=max(1, min(request.limit, 5)),
+        timeout_seconds=max(30, min(request.timeout_seconds, 600)),
+    )
+    return {"ok": True, "worker": result, "summary": load_worker_summary()}
 
 
 @app.get("/api/agents/{agent_id}/timeline")
