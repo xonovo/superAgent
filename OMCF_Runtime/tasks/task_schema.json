@@ -8,6 +8,14 @@
   "collaborators": [],
   "inputs": [],
   "outputs": [],
+  "tools": [],
+  "agent_call": {
+    "adapter": "codex_or_gpt",
+    "status": "READY_FOR_EXTERNAL_AGENT",
+    "objective": "",
+    "required_inputs": [],
+    "expected_outputs": []
+  },
   "status": "READY",
   "gates": {
     "capability_matrix": "REQUIRED",

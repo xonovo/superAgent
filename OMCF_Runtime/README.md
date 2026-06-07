@@ -1,6 +1,6 @@
-# OMCF Runtime V1
+# OMCF Runtime
 
-OMCF Runtime V1 是 OMCF 从“组织制度”进入“可运行组织”的第一版执行引擎。
+OMCF Runtime 是 OMCF 从“组织制度”进入“可运行组织”的执行引擎。
 
 当前目标不是写业务代码，而是跑通最小组织链路：
 
@@ -25,10 +25,32 @@ OMCF_Runtime/
 └── audit       Runtime 审计适配层
 ```
 
-## 最小运行命令
+## Runtime V1
 
 ```powershell
 python OMCF_Runtime/runtime/omcf_runtime.py start-project --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台"
+```
+
+V1 生成项目启动链路的结构化文件。
+
+## Runtime V2
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台"
+```
+
+V2 增加 Tool Layer：
+
+1. 本地知识库检查。
+2. 项目记忆模板检查。
+3. Agent 调用包生成。
+4. 工具调用日志。
+5. 赵云审计门禁。
+
+查看工具注册表：
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py list-tools
 ```
 
 运行产物会写入：
@@ -39,10 +61,10 @@ OMCF_Runtime/tasks/runs/
 
 `runs/` 默认不提交到 Git，用于保存本地试跑结果。
 
-## V1 边界
+## Runtime 边界
 
-1. V1 不接外部 LLM。
-2. V1 不执行业务代码。
-3. V1 不自动修改 MCP 制度层。
-4. V1 只生成项目启动链路的结构化产物。
-5. V1 使用 MCP 文档作为制度来源。
+1. Runtime 不是 AI，最终干活的仍然是 Codex、GPT、AOEM 或其他外部工具。
+2. Runtime 不直接写业务代码。
+3. Runtime 不自动修改 MCP 制度层。
+4. Runtime 使用 MCP 文档作为制度来源。
+5. V2 只记录外部 Agent 调用合同，不直接调用远程模型。
