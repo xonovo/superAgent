@@ -9,12 +9,22 @@
   "inputs": [],
   "outputs": [],
   "tools": [],
+  "provider": {
+    "provider_id": "provider.codex.manual",
+    "model": "codex-current",
+    "route_status": "READY_FOR_PROVIDER"
+  },
   "agent_call": {
-    "adapter": "codex_or_gpt",
+    "adapter": "provider_layer",
     "status": "READY_FOR_EXTERNAL_AGENT",
     "objective": "",
     "required_inputs": [],
     "expected_outputs": []
+  },
+  "human_approval": {
+    "required": false,
+    "scope": "",
+    "status": ""
   },
   "status": "READY",
   "gates": {

@@ -53,6 +53,32 @@ V2 增加 Tool Layer：
 python OMCF_Runtime/runtime/omcf_runtime.py list-tools
 ```
 
+## Runtime V2.5
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-5 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台"
+```
+
+V2.5 增加 Provider Layer 和 Human Approval Layer：
+
+1. Agent Profile 与执行 Provider 解耦。
+2. Provider Registry 决定 Codex、GPT、Claude、本地模型或 AOEM 由谁执行。
+3. Provider Route 进入工具调用日志。
+4. 敏感范围进入 `WAIT_HUMAN_APPROVAL`，不视为失败。
+5. 缺文件、工具失败才进入 `AUDIT_FAIL`。
+
+查看 Provider 注册表：
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py list-providers
+```
+
+触发人工审批示例：
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-5 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台" --sensitive-scope database_schema --sensitive-scope aoem_core_logic
+```
+
 运行产物会写入：
 
 ```text
@@ -68,3 +94,4 @@ OMCF_Runtime/tasks/runs/
 3. Runtime 不自动修改 MCP 制度层。
 4. Runtime 使用 MCP 文档作为制度来源。
 5. V2 只记录外部 Agent 调用合同，不直接调用远程模型。
+6. V2.5 只定义 Provider 合同和人工审批状态，不保存 API Key。

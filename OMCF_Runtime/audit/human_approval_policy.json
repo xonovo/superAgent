@@ -1,0 +1,27 @@
+{
+  "version": "OMCF_Human_Approval_Policy_V2_5",
+  "default_status": "WAIT_HUMAN_APPROVAL",
+  "approver": "King Xu",
+  "approval_required_scopes": {
+    "database_schema": {
+      "label": "Database schema change",
+      "reason": "Data structure changes require explicit human confirmation."
+    },
+    "bank_interface": {
+      "label": "Bank interface change",
+      "reason": "Banking and payment integrations require explicit human confirmation."
+    },
+    "ai_training_data": {
+      "label": "AI training data change",
+      "reason": "Training data changes require explicit human confirmation and data governance review."
+    },
+    "production_deploy": {
+      "label": "Production deployment",
+      "reason": "Production releases require explicit human confirmation."
+    },
+    "aoem_core_logic": {
+      "label": "AOEM core execution logic",
+      "reason": "AOEM core execution, GPU scheduling, and privacy compute logic require double review."
+    }
+  }
+}

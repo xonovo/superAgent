@@ -13,7 +13,15 @@ python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2 --project-name "株
 ```
 
 ```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-5 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台"
+```
+
+```powershell
 python OMCF_Runtime/runtime/omcf_runtime.py list-tools
+```
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py list-providers
 ```
 
 ## 输出
@@ -33,3 +41,10 @@ Runtime V2 额外生成：
 2. Tool Layer Report
 3. Agent Call Packets
 4. Tool Invocations JSONL
+
+Runtime V2.5 额外生成：
+
+1. Provider Registry
+2. Provider Execution Plan
+3. Human Approval Requests
+4. Human Approval Report

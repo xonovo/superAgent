@@ -1,0 +1,78 @@
+{
+  "version": "OMCF_Provider_Layer_V2_5",
+  "default_provider": "provider.codex.manual",
+  "providers": [
+    {
+      "id": "provider.codex.manual",
+      "name": "Codex Manual Handoff",
+      "kind": "agent_provider",
+      "execution_mode": "manual_handoff",
+      "enabled": true,
+      "requires_human_approval": false,
+      "status": "available",
+      "capabilities": ["code_work", "repo_analysis", "document_generation", "agent_reasoning"]
+    },
+    {
+      "id": "provider.openai.gpt",
+      "name": "OpenAI GPT Adapter",
+      "kind": "model_provider",
+      "execution_mode": "api_adapter",
+      "enabled": false,
+      "requires_human_approval": true,
+      "status": "adapter_required",
+      "capabilities": ["llm_inference", "agent_reasoning", "structured_output"]
+    },
+    {
+      "id": "provider.claude",
+      "name": "Claude Adapter",
+      "kind": "model_provider",
+      "execution_mode": "api_adapter",
+      "enabled": false,
+      "requires_human_approval": true,
+      "status": "adapter_required",
+      "capabilities": ["llm_inference", "long_context_reasoning"]
+    },
+    {
+      "id": "provider.local.llm",
+      "name": "Local LLM Adapter",
+      "kind": "model_provider",
+      "execution_mode": "local_adapter",
+      "enabled": false,
+      "requires_human_approval": false,
+      "status": "adapter_required",
+      "capabilities": ["local_inference", "private_context"]
+    },
+    {
+      "id": "provider.aoem.runtime",
+      "name": "AOEM Runtime Adapter",
+      "kind": "runtime_provider",
+      "execution_mode": "runtime_adapter",
+      "enabled": false,
+      "requires_human_approval": true,
+      "status": "adapter_required",
+      "capabilities": ["aoem_execute", "gpu_dispatch", "privacy_compute"]
+    }
+  ],
+  "agent_defaults": {
+    "CAIO-001": {
+      "provider_id": "provider.codex.manual",
+      "model": "codex-current"
+    },
+    "PM-001": {
+      "provider_id": "provider.codex.manual",
+      "model": "codex-current"
+    },
+    "ARC-001": {
+      "provider_id": "provider.codex.manual",
+      "model": "codex-current"
+    },
+    "DOC-001": {
+      "provider_id": "provider.codex.manual",
+      "model": "codex-current"
+    },
+    "AUD-001": {
+      "provider_id": "provider.codex.manual",
+      "model": "codex-current"
+    }
+  }
+}

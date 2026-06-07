@@ -12,6 +12,8 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_ROOT = REPO_ROOT / "OMCF_Runtime"
 MCP_ROOT = REPO_ROOT / "MCP"
+PROVIDERS_ROOT = RUNTIME_ROOT / "providers"
+APPROVAL_POLICY_PATH = RUNTIME_ROOT / "audit" / "human_approval_policy.json"
 
 
 REQUIRED_AGENTS = [
@@ -72,6 +74,29 @@ class ToolInvocation:
     created_at: str
 
 
+@dataclass
+class ProviderSpec:
+    id: str
+    name: str
+    kind: str
+    execution_mode: str
+    enabled: bool
+    requires_human_approval: bool
+    status: str
+    capabilities: list[str]
+
+
+@dataclass
+class ApprovalRequest:
+    id: str
+    scope: str
+    label: str
+    reason: str
+    approver: str
+    status: str
+    created_at: str
+
+
 def parse_simple_yaml(path: Path) -> dict[str, Any]:
     data: dict[str, Any] = {}
     current_key: str | None = None
@@ -112,6 +137,44 @@ def load_agents() -> dict[str, AgentSpec]:
         )
         agents[agent.id] = agent
     return agents
+
+
+def load_provider_config() -> dict[str, Any]:
+    path = PROVIDERS_ROOT / "providers.json"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing provider registry: {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_provider_registry() -> tuple[dict[str, ProviderSpec], dict[str, dict[str, str]], str]:
+    config = load_provider_config()
+    providers: dict[str, ProviderSpec] = {}
+    for raw in config.get("providers", []):
+        provider = ProviderSpec(
+            id=str(raw.get("id", "")),
+            name=str(raw.get("name", "")),
+            kind=str(raw.get("kind", "")),
+            execution_mode=str(raw.get("execution_mode", "")),
+            enabled=bool(raw.get("enabled", False)),
+            requires_human_approval=bool(raw.get("requires_human_approval", False)),
+            status=str(raw.get("status", "")),
+            capabilities=list(raw.get("capabilities", [])),
+        )
+        providers[provider.id] = provider
+    agent_defaults = {
+        str(agent_id): {
+            "provider_id": str(value.get("provider_id", config.get("default_provider", ""))),
+            "model": str(value.get("model", "")),
+        }
+        for agent_id, value in config.get("agent_defaults", {}).items()
+    }
+    return providers, agent_defaults, str(config.get("default_provider", ""))
+
+
+def load_approval_policy() -> dict[str, Any]:
+    if not APPROVAL_POLICY_PATH.exists():
+        raise FileNotFoundError(f"Missing human approval policy: {APPROVAL_POLICY_PATH}")
+    return json.loads(APPROVAL_POLICY_PATH.read_text(encoding="utf-8"))
 
 
 def build_tool_registry() -> dict[str, ToolSpec]:
@@ -160,6 +223,25 @@ def build_tool_registry() -> dict[str, ToolSpec]:
             description="Evaluates required runtime gates and records PASS/FAIL status.",
             enabled=True,
             capabilities=["runtime_audit", "gate_validation"],
+        ),
+        ToolSpec(
+            id="tool.provider.invoke",
+            name="Provider Invoke",
+            category="provider",
+            provider="runtime",
+            description="Routes agent call packets to a configured provider contract.",
+            enabled=True,
+            capabilities=["provider_routing", "adapter_contract"],
+        ),
+        ToolSpec(
+            id="tool.approval.request",
+            name="Human Approval Request",
+            category="approval",
+            provider="runtime",
+            description="Creates WAIT_HUMAN_APPROVAL records for protected scopes.",
+            enabled=True,
+            requires_human_approval=True,
+            capabilities=["human_in_the_loop", "approval_gate"],
         ),
         ToolSpec(
             id="tool.github.remote",
@@ -269,6 +351,21 @@ def tool_summary(tools: dict[str, ToolSpec]) -> dict[str, dict[str, Any]]:
     }
 
 
+def provider_summary(providers: dict[str, ProviderSpec]) -> dict[str, dict[str, Any]]:
+    return {
+        provider_id: {
+            "name": provider.name,
+            "kind": provider.kind,
+            "execution_mode": provider.execution_mode,
+            "enabled": provider.enabled,
+            "requires_human_approval": provider.requires_human_approval,
+            "status": provider.status,
+            "capabilities": provider.capabilities,
+        }
+        for provider_id, provider in providers.items()
+    }
+
+
 def build_runtime_context(
     runtime_version: str,
     project_name: str,
@@ -276,6 +373,7 @@ def build_runtime_context(
     project_type: str,
     agents: dict[str, AgentSpec],
     tools: dict[str, ToolSpec] | None = None,
+    providers: dict[str, ProviderSpec] | None = None,
 ) -> dict[str, Any]:
     context: dict[str, Any] = {
         "runtime": runtime_version,
@@ -303,6 +401,8 @@ def build_runtime_context(
     }
     if tools is not None:
         context["tools"] = tool_summary(tools)
+    if providers is not None:
+        context["providers"] = provider_summary(providers)
     return context
 
 
@@ -378,7 +478,9 @@ def agent_packet_invocation(
     objective: str,
     required_inputs: list[str],
     expected_outputs: list[str],
+    provider_assignment: dict[str, str] | None = None,
 ) -> ToolInvocation:
+    assignment = provider_assignment or {"provider_id": "provider.codex.manual", "model": "codex-current"}
     return new_invocation(
         index,
         agent.id,
@@ -394,10 +496,122 @@ def agent_packet_invocation(
         },
         {
             "expected_outputs": expected_outputs,
-            "adapter": "codex_or_gpt",
-            "execution_note": "Runtime V2 records the call contract. A Codex/GPT adapter can execute it later.",
+            "adapter": "provider_layer",
+            "provider_id": assignment.get("provider_id", ""),
+            "model": assignment.get("model", ""),
+            "execution_note": "Runtime records the call contract. A provider adapter can execute it later.",
         },
     )
+
+
+def provider_invoke_invocation(
+    index: int,
+    agent_packet: ToolInvocation,
+    providers: dict[str, ProviderSpec],
+) -> ToolInvocation:
+    provider_id = str(agent_packet.output.get("provider_id", ""))
+    provider = providers.get(provider_id)
+    if provider is None:
+        status = "FAIL"
+        provider_payload: dict[str, Any] = {
+            "provider_id": provider_id,
+            "error": "provider_not_registered",
+        }
+    elif provider.enabled:
+        status = "READY_FOR_PROVIDER"
+        provider_payload = {
+            "provider_id": provider.id,
+            "provider_name": provider.name,
+            "execution_mode": provider.execution_mode,
+            "requires_human_approval": provider.requires_human_approval,
+            "adapter_status": provider.status,
+        }
+    else:
+        status = "WAIT_ADAPTER_CONFIGURATION"
+        provider_payload = {
+            "provider_id": provider.id,
+            "provider_name": provider.name,
+            "execution_mode": provider.execution_mode,
+            "requires_human_approval": provider.requires_human_approval,
+            "adapter_status": provider.status,
+        }
+    return new_invocation(
+        index,
+        agent_packet.agent_id,
+        "tool.provider.invoke",
+        "route_agent_packet_to_provider",
+        status,
+        {
+            "agent_packet_id": agent_packet.id,
+            "agent_id": agent_packet.agent_id,
+            "provider_id": provider_id,
+            "model": agent_packet.output.get("model", ""),
+            "objective": agent_packet.input.get("objective", ""),
+        },
+        provider_payload,
+    )
+
+
+def approval_requests_for_scopes(scopes: list[str]) -> list[ApprovalRequest]:
+    policy = load_approval_policy()
+    protected_scopes = policy.get("approval_required_scopes", {})
+    requests: list[ApprovalRequest] = []
+    for index, scope in enumerate(scopes, start=1):
+        if scope not in protected_scopes:
+            continue
+        item = protected_scopes[scope]
+        requests.append(
+            ApprovalRequest(
+                id=f"APR-{index:03d}",
+                scope=scope,
+                label=str(item.get("label", scope)),
+                reason=str(item.get("reason", "")),
+                approver=str(policy.get("approver", "King Xu")),
+                status=str(policy.get("default_status", "WAIT_HUMAN_APPROVAL")),
+                created_at=now_iso(),
+            )
+        )
+    return requests
+
+
+def approval_invocations(start_index: int, approvals: list[ApprovalRequest]) -> list[ToolInvocation]:
+    rows: list[ToolInvocation] = []
+    for offset, approval in enumerate(approvals):
+        rows.append(
+            new_invocation(
+                start_index + offset,
+                "AUD-001",
+                "tool.approval.request",
+                "create_human_approval_gate",
+                approval.status,
+                {
+                    "approval_id": approval.id,
+                    "scope": approval.scope,
+                    "label": approval.label,
+                },
+                {
+                    "approver": approval.approver,
+                    "reason": approval.reason,
+                    "status": approval.status,
+                },
+            )
+        )
+    return rows
+
+
+def approval_dicts(approvals: list[ApprovalRequest]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": item.id,
+            "scope": item.scope,
+            "label": item.label,
+            "reason": item.reason,
+            "approver": item.approver,
+            "status": item.status,
+            "created_at": item.created_at,
+        }
+        for item in approvals
+    ]
 
 
 def audit_invocation(index: int, missing_files: list[str], tool_failures: list[str]) -> ToolInvocation:
@@ -416,6 +630,46 @@ def audit_invocation(index: int, missing_files: list[str], tool_failures: list[s
             "missing_files": missing_files,
             "tool_failures": tool_failures,
             "audit_result": "PASS" if status == "SUCCESS" else "FAIL",
+        },
+    )
+
+
+def audit_invocation_v25(
+    index: int,
+    missing_files: list[str],
+    tool_failures: list[str],
+    approvals: list[ApprovalRequest],
+) -> ToolInvocation:
+    if missing_files or tool_failures:
+        status = "FAIL"
+        audit_result = "FAIL"
+    elif approvals:
+        status = "WAIT_HUMAN_APPROVAL"
+        audit_result = "WAIT_HUMAN_APPROVAL"
+    else:
+        status = "SUCCESS"
+        audit_result = "PASS"
+    return new_invocation(
+        index,
+        "AUD-001",
+        "tool.audit.gate",
+        "runtime_v2_5_gate_check",
+        status,
+        {
+            "required_mcp_files": [f"MCP/{rel}" for rel in REQUIRED_MCP_FILES],
+            "checks": [
+                "required_files",
+                "project_memory_template_only",
+                "provider_registry",
+                "agent_provider_assignments",
+                "human_approval_gates",
+            ],
+        },
+        {
+            "missing_files": missing_files,
+            "tool_failures": tool_failures,
+            "approval_requests": [item.id for item in approvals],
+            "audit_result": audit_result,
         },
     )
 
@@ -605,6 +859,56 @@ Runtime V2 新增工具层。工具层不等于 AI，它负责把 Agent 的意�
 """
 
 
+def render_provider_execution_plan(providers: dict[str, ProviderSpec], invocations: list[ToolInvocation]) -> str:
+    provider_rows = "\n".join(
+        f"| {provider.id} | {provider.kind} | {provider.execution_mode} | {provider.enabled} | {provider.status} |"
+        for provider in providers.values()
+    )
+    routes = [item for item in invocations if item.tool_id == "tool.provider.invoke"]
+    route_rows = "\n".join(
+        f"| {item.id} | {item.agent_id} | {item.input.get('provider_id', '')} | {item.input.get('model', '')} | {item.status} |"
+        for item in routes
+    )
+    return f"""
+# Provider Execution Plan
+
+Runtime V2.5 separates agent profiles from execution providers.
+
+## Providers
+
+| Provider | Kind | Mode | Enabled | Status |
+|---|---|---|---|---|
+{provider_rows}
+
+## Agent Routes
+
+| Invocation | Agent | Provider | Model | Status |
+|---|---|---|---|---|
+{route_rows}
+"""
+
+
+def render_human_approval_report(approvals: list[ApprovalRequest]) -> str:
+    if approvals:
+        rows = "\n".join(
+            f"| {item.id} | {item.scope} | {item.label} | {item.approver} | {item.status} |"
+            for item in approvals
+        )
+    else:
+        rows = "| - | - | - | - | NO_APPROVAL_REQUIRED |"
+    return f"""
+# Human Approval Report
+
+Runtime V2.5 introduces explicit human-in-the-loop gates.
+
+## Approval Requests
+
+| ID | Scope | Label | Approver | Status |
+|---|---|---|---|---|
+{rows}
+"""
+
+
 def render_agent_call_packets(invocations: list[ToolInvocation]) -> str:
     packets = [item for item in invocations if item.tool_id == "tool.agent.codex_packet"]
     sections: list[str] = ["# 06 Agent Call Packets"]
@@ -616,6 +920,8 @@ def render_agent_call_packets(invocations: list[ToolInvocation]) -> str:
 ## {item.id} / {item.input["nickname"]} / {item.agent_id}
 
 - Adapter: {item.output["adapter"]}
+- Provider: {item.output.get("provider_id", "")}
+- Model: {item.output.get("model", "")}
 - Status: {item.status}
 
 ### Objective
@@ -640,12 +946,30 @@ def render_agent_call_packets(invocations: list[ToolInvocation]) -> str:
     return "\n".join(sections)
 
 
-def render_audit_report(project_name: str, missing_files: list[str], agent: AgentSpec, tool_failures: list[str] | None = None) -> str:
+def render_audit_report(
+    project_name: str,
+    missing_files: list[str],
+    agent: AgentSpec,
+    tool_failures: list[str] | None = None,
+    approval_requests: list[ApprovalRequest] | None = None,
+) -> str:
     failures = tool_failures or []
-    status = "PASS" if not missing_files and not failures else "FAIL"
+    approvals = approval_requests or []
+    if missing_files or failures:
+        status = "FAIL"
+    elif approvals:
+        status = "WAIT_HUMAN_APPROVAL"
+    else:
+        status = "PASS"
     missing_text = "\n".join(f"- {item}" for item in missing_files) if missing_files else "- 无"
     failure_text = "\n".join(f"- {item}" for item in failures) if failures else "- 无"
-    opinion = "启动链路可进入下一步任务规划。" if status == "PASS" else "存在关键缺口，不得进入下一步。"
+    approval_text = "\n".join(f"- {item.id}: {item.scope} / {item.status}" for item in approvals) if approvals else "- 无"
+    if status == "PASS":
+        opinion = "启动链路可进入下一步任务规划。"
+    elif status == "WAIT_HUMAN_APPROVAL":
+        opinion = "启动链路已挂起，等待人工审批后继续。"
+    else:
+        opinion = "存在关键缺口，不得进入下一步。"
     return f"""
 # 赵云启动审计报告
 
@@ -670,6 +994,10 @@ def render_audit_report(project_name: str, missing_files: list[str], agent: Agen
 ## 工具失败
 
 {failure_text}
+
+## 人工审批
+
+{approval_text}
 
 ## 审计意见
 
@@ -766,6 +1094,108 @@ def build_v2_invocations(
     return invocations
 
 
+def provider_assignment_for_agent(
+    agent_id: str,
+    agent_defaults: dict[str, dict[str, str]],
+    default_provider: str,
+) -> dict[str, str]:
+    assignment = agent_defaults.get(agent_id, {})
+    return {
+        "provider_id": assignment.get("provider_id", default_provider),
+        "model": assignment.get("model", ""),
+    }
+
+
+def build_v25_invocations(
+    agents: dict[str, AgentSpec],
+    providers: dict[str, ProviderSpec],
+    agent_defaults: dict[str, dict[str, str]],
+    default_provider: str,
+    project_name: str,
+    project_code: str,
+    project_type: str,
+    missing_files: list[str],
+    approvals: list[ApprovalRequest],
+) -> list[ToolInvocation]:
+    invocations = knowledge_lookup_invocations(1)
+    next_index = len(invocations) + 1
+    invocations.append(memory_lookup_invocation(next_index))
+    next_index += 1
+
+    packets = [
+        agent_packet_invocation(
+            next_index,
+            agents["PM-001"],
+            f"为 {project_name} 生成 Phase-1 任务树，并根据能力矩阵决定责任角色。",
+            [
+                "MCP/PROJECT_PACK_TEMPLATE.md",
+                "MCP/TASK_CARD_TEMPLATE.md",
+                "MCP/20_Expert_Training/capability_matrix.md",
+            ],
+            ["02_zhuge_task_tree.md", "任务依赖与审计门禁"],
+            provider_assignment_for_agent("PM-001", agent_defaults, default_provider),
+        ),
+        agent_packet_invocation(
+            next_index + 1,
+            agents["ARC-001"],
+            f"为 {project_name} 生成启动阶段架构树，明确模块边界和禁止编码边界。",
+            [
+                "02_zhuge_task_tree.md",
+                "MCP/02_Architecture/architecture_principles.md",
+                "MCP/17_Memory_Center/decision_registry.md",
+            ],
+            ["03_mozi_architecture_tree.md", "Architecture Decision candidates"],
+            provider_assignment_for_agent("ARC-001", agent_defaults, default_provider),
+        ),
+        agent_packet_invocation(
+            next_index + 2,
+            agents["DOC-001"],
+            f"为 {project_name} 生成文档树，保持先文档后开发。",
+            [
+                "03_mozi_architecture_tree.md",
+                "MCP/11_Document/document_standard.md",
+                "MCP/TASK_FLOW.md",
+            ],
+            ["04_yingzheng_document_tree.md", "Phase-1 document checklist"],
+            provider_assignment_for_agent("DOC-001", agent_defaults, default_provider),
+        ),
+    ]
+    invocations.extend(packets)
+    next_index += len(packets)
+
+    for packet in packets:
+        invocations.append(provider_invoke_invocation(next_index, packet, providers))
+        next_index += 1
+
+    invocations.extend(approval_invocations(next_index, approvals))
+    next_index += len(approvals)
+
+    memory_failure = [
+        item.id
+        for item in invocations
+        if item.tool_id == "tool.memory.lookup" and item.status != "SUCCESS"
+    ]
+    knowledge_failures = [
+        item.id
+        for item in invocations
+        if item.tool_id == "tool.knowledge.lookup" and item.status != "SUCCESS"
+    ]
+    provider_failures = [
+        item.id
+        for item in invocations
+        if item.tool_id == "tool.provider.invoke" and item.status == "FAIL"
+    ]
+    invocations.append(
+        audit_invocation_v25(
+            next_index,
+            missing_files,
+            knowledge_failures + memory_failure + provider_failures,
+            approvals,
+        )
+    )
+    return invocations
+
+
 def start_project_v2(project_name: str, project_code: str, project_type: str, output_dir: str | None) -> Path:
     agents = load_agents()
     tools = build_tool_registry()
@@ -805,8 +1235,90 @@ def start_project_v2(project_name: str, project_code: str, project_type: str, ou
     return out_dir
 
 
+def start_project_v25(
+    project_name: str,
+    project_code: str,
+    project_type: str,
+    output_dir: str | None,
+    sensitive_scopes: list[str],
+) -> Path:
+    agents = load_agents()
+    tools = build_tool_registry()
+    providers, agent_defaults, default_provider = load_provider_registry()
+    missing_files = check_required_files()
+    approvals = approval_requests_for_scopes(sensitive_scopes)
+    safe_code = safe_project_code(project_code)
+    run_id = f"{safe_code}_v2_5_{timestamp()}"
+    out_dir = Path(output_dir) if output_dir else RUNTIME_ROOT / "tasks" / "runs" / run_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    invocations = build_v25_invocations(
+        agents,
+        providers,
+        agent_defaults,
+        default_provider,
+        project_name,
+        safe_code,
+        project_type,
+        missing_files,
+        approvals,
+    )
+    tool_failures = [
+        item.id
+        for item in invocations
+        if item.status == "FAIL"
+    ]
+    if missing_files or tool_failures:
+        audit_status = "AUDIT_FAIL"
+    elif approvals:
+        audit_status = "WAIT_HUMAN_APPROVAL"
+    else:
+        audit_status = "AUDIT_PASS"
+
+    context = build_runtime_context("OMCF_Runtime_V2_5", project_name, project_code, project_type, agents, tools, providers)
+    context["run_id"] = run_id
+    context["status"] = audit_status
+    context["tool_invocation_count"] = len(invocations)
+    context["provider_invocation_count"] = len([item for item in invocations if item.tool_id == "tool.provider.invoke"])
+    context["approval_count"] = len(approvals)
+    context["external_agent_calls"] = [
+        item.id for item in invocations if item.status == "READY_FOR_EXTERNAL_AGENT"
+    ]
+    context["provider_routes"] = [
+        item.id for item in invocations if item.tool_id == "tool.provider.invoke"
+    ]
+    context["approval_requests"] = [item.id for item in approvals]
+
+    write_json(out_dir / "00_runtime_context.json", context)
+    write_json(out_dir / "00_tool_registry.json", tool_summary(tools))
+    write_json(out_dir / "00_provider_registry.json", provider_summary(providers))
+    write_text(out_dir / "01_nuwa_project_bootstrap.md", render_nuwa(project_name, project_code, project_type, agents["CAIO-001"], "OMCF_Runtime_V2_5"))
+    write_text(out_dir / "02_zhuge_task_tree.md", render_task_tree(project_name, safe_code, agents["PM-001"]))
+    write_text(out_dir / "03_mozi_architecture_tree.md", render_architecture_tree(project_name, project_type, agents["ARC-001"]))
+    write_text(out_dir / "04_yingzheng_document_tree.md", render_document_tree(project_name, agents["DOC-001"]))
+    write_text(out_dir / "05_tool_layer_report.md", render_tool_layer_report(tools, invocations))
+    write_text(out_dir / "06_provider_execution_plan.md", render_provider_execution_plan(providers, invocations))
+    write_text(out_dir / "07_agent_call_packets.md", render_agent_call_packets(invocations))
+    write_jsonl(out_dir / "08_tool_invocations.jsonl", invocation_dicts(invocations))
+    write_json(out_dir / "09_human_approval_requests.json", {"approval_requests": approval_dicts(approvals)})
+    write_text(out_dir / "09_human_approval_report.md", render_human_approval_report(approvals))
+    write_text(out_dir / "10_zhaoyun_audit_report.md", render_audit_report(project_name, missing_files, agents["AUD-001"], tool_failures, approvals))
+
+    return out_dir
+
+
 def list_tools() -> None:
     print(json.dumps(tool_summary(build_tool_registry()), ensure_ascii=False, indent=2))
+
+
+def list_providers() -> None:
+    providers, agent_defaults, default_provider = load_provider_registry()
+    payload = {
+        "default_provider": default_provider,
+        "providers": provider_summary(providers),
+        "agent_defaults": agent_defaults,
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 def main() -> int:
@@ -825,7 +1337,20 @@ def main() -> int:
     start_v2.add_argument("--project-type", required=True)
     start_v2.add_argument("--output-dir", default=None)
 
+    start_v25 = subparsers.add_parser("start-project-v2-5", help="Start a Runtime V2.5 chain with Provider Layer and human approval gates")
+    start_v25.add_argument("--project-name", required=True)
+    start_v25.add_argument("--project-code", required=True)
+    start_v25.add_argument("--project-type", required=True)
+    start_v25.add_argument("--output-dir", default=None)
+    start_v25.add_argument(
+        "--sensitive-scope",
+        action="append",
+        default=[],
+        help="Protected scope requiring human approval, such as database_schema, bank_interface, ai_training_data, production_deploy, or aoem_core_logic",
+    )
+
     subparsers.add_parser("list-tools", help="Print the Runtime V2 tool registry")
+    subparsers.add_parser("list-providers", help="Print the Runtime V2.5 provider registry")
 
     args = parser.parse_args()
 
@@ -839,8 +1364,23 @@ def main() -> int:
         print(f"OMCF Runtime V2 completed: {out_dir}")
         return 0
 
+    if args.command == "start-project-v2-5":
+        out_dir = start_project_v25(
+            args.project_name,
+            args.project_code,
+            args.project_type,
+            args.output_dir,
+            args.sensitive_scope,
+        )
+        print(f"OMCF Runtime V2.5 completed: {out_dir}")
+        return 0
+
     if args.command == "list-tools":
         list_tools()
+        return 0
+
+    if args.command == "list-providers":
+        list_providers()
         return 0
 
     parser.error(f"Unknown command: {args.command}")

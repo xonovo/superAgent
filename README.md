@@ -19,3 +19,19 @@ python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2 --project-name "株
 ```powershell
 python OMCF_Runtime/runtime/omcf_runtime.py list-tools
 ```
+
+## Runtime V2.5
+
+Runtime V2.5 adds Provider Layer and human approval gates. Agents stay as role profiles; providers perform the actual execution.
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-5 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台"
+```
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-5 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台" --sensitive-scope database_schema --sensitive-scope aoem_core_logic
+```
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py list-providers
+```
