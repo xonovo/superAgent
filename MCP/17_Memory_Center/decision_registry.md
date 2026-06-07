@@ -24,6 +24,8 @@ Decision Registry 不替代 ADR。ADR 记录架构决策细节，Decision Regist
 | DEC-V4-0001 | 待填写 | CAPABILITY | V4 不新增角色，新增能力矩阵 | Capability Matrix | 继续增加角色 | 角色已足够，瓶颈在能力调度 | OMCF 全局 | 待填写 | DRAFT |
 | DEC-V4-0002 | 待填写 | KNOWLEDGE | AOEM 先建立宪法再扩展知识 | AOEM Constitution | 直接堆资料 | 防止知识漂移 | AOEM 知识库 | 待填写 | DRAFT |
 | DEC-V4-0003 | 待填写 | PROJECT | Project Memory 按需创建 | 模板化按需创建 | 预设项目槽位 | 防止空项目和知识污染 | 所有项目 | 待填写 | DRAFT |
+| DEC-RUNTIME-0001 | 2026-06-07 | ARCHITECTURE | Freeze OMCF Runtime V2.6 and stop version-chasing | V2.6 as Control Plane baseline | Continue V2.7/V2.8 before production | Real execution is more valuable than more control-plane design | OMCF Runtime, Providers, Production Runs | ADR-0002 | ACCEPTED |
+| DEC-PROD-0001 | 2026-06-07 | PROJECT | Start real project memory for Zhuzhou Property Supervision Platform | Create Zhuzhou_Property_Platform memory because project is explicitly started | Keep all production artifacts only in ignored runtime runs | Production execution needs auditable committed memory | Zhuzhou Property Supervision Platform | ADR-0002 | ACCEPTED |
 
 ## 4. 强制规则
 
