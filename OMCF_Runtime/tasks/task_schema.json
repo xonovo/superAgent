@@ -1,0 +1,17 @@
+{
+  "task_id": "TASK-001",
+  "title": "Task title",
+  "source": "Project bootstrap",
+  "phase": "Phase-1",
+  "module": "Architecture",
+  "assignee": "ARC-001",
+  "collaborators": [],
+  "inputs": [],
+  "outputs": [],
+  "status": "READY",
+  "gates": {
+    "capability_matrix": "REQUIRED",
+    "knowledge_certification": "REQUIRED",
+    "audit": "REQUIRED"
+  }
+}
