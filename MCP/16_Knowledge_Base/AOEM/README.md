@@ -6,6 +6,18 @@
 
 ```text
 AOEM/
+├── AOEM_CONSTITUTION.md
+├── AOEM_Knowledge_Map.md
+├── 01_Theory
+├── 02_Runtime
+├── 03_GPU
+├── 04_Privacy
+├── 05_SDK
+├── 06_Examples
+├── 07_FAQ
+├── 08_Best_Practice
+├── 09_Roadmap
+├── 10_Architecture_Decisions
 ├── AOEM_Theory
 ├── AOEM_Runtime
 ├── AOEM_GPU

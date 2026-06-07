@@ -1,11 +1,27 @@
 # Codex Command Templates
 
-本文档定义 OMCF / WPF-MCP V3.5 的可复用 Codex 命令模板。每个项目只需要替换项目名称、项目类型、项目资料和当前阶段。
+本文档定义 OMCF / WPF-MCP V4 的可复用 Codex 命令模板。每个项目只需要替换项目名称、项目类型、项目资料和当前阶段。
 
-## 1. OMCF V3.5 项目启动命令
+## 0. OMCF V4 能力门禁命令
 
 ```text
-【OMCF V3.5 启动】
+【OMCF V4 能力门禁】
+
+执行原则：
+
+1. 禁止新增角色
+2. 禁止预设项目记忆槽位
+3. 诸葛亮分配任务前必须查询 Capability Matrix
+4. 赵云审计前必须检查 Knowledge Certification
+5. AOEM 任务必须遵守 AOEM Constitution
+6. 重大选择和拒绝方案必须进入 Decision Registry
+7. 能力不足则先训练，不得硬接任务
+```
+
+## 1. OMCF V4 项目启动命令
+
+```text
+【OMCF V4 启动】
 
 项目名称：
 <Project Name>
@@ -34,16 +50,19 @@ MCP/PROJECT_PACK_TEMPLATE.md
 9. 嬴政建立文档体系
 10. 如涉及 AOEM、数学模型或新语言，自动引入庞统、华佗、庄周
 11. 检查专家成熟度 Level
-12. 赵云进行阶段审计
-13. 审计通过后才允许进入开发阶段
+12. 检查 Capability Matrix
+13. 检查 Knowledge Certification
+14. AOEM 任务检查 AOEM Constitution
+15. 赵云进行阶段审计
+16. 审计通过后才允许进入开发阶段
 ```
 
-## 2. OMCF V3.5 总命令
+## 2. OMCF V4 总命令
 
 ```text
-【OMCF V3.5】
+【OMCF V4】
 
-新增永久机构：
+既有永久机构：
 
 伏羲（知识中心）
 鬼谷子（战略中心）
@@ -62,14 +81,16 @@ MCP/PROJECT_PACK_TEMPLATE.md
 8. 未经知识库训练完成，庄周不得输出语言设计结论
 9. 专家成熟度低于 Level 3，不得独立输出生产级方案
 10. 每个项目记忆必须按需创建，不得预设项目槽位
-11. 所有任务必须经过赵云审计
-12. 审计失败二次复审，二次复审失败退回重做
+11. Capability Matrix 不满足任务要求不得分配任务
+12. Knowledge Certification 未认证不得承接生产任务
+13. 所有任务必须经过赵云审计
+14. 审计失败二次复审，二次复审失败退回重做
 ```
 
-## 3. WPF-MCP V3.5 项目命令
+## 3. WPF-MCP V4 项目命令
 
 ```text
-【WPF-MCP V3.5】
+【WPF-MCP V4】
 
 角色冻结：
 
@@ -101,7 +122,7 @@ Phase-1 文档建设阶段
 
 禁止直接编码。
 必须先建立知识库、记忆中心、学习中心和专家训练登记。
-项目记忆必须在 WPF 项目正式启动时按需创建。
+项目记忆必须在项目正式启动时按需创建。
 ```
 
 ## 4. AOEM 专家任务命令
@@ -119,12 +140,15 @@ Phase-1 文档建设阶段
 4. MCP/13_AOEM/README.md
 5. MCP/16_Knowledge_Base/AOEM/README.md
 6. MCP/19_Learning_Center/expert_training_register.md
+7. MCP/20_Expert_Training/capability_matrix.md
+8. MCP/20_Expert_Training/knowledge_certification.md
+9. MCP/16_Knowledge_Base/AOEM/AOEM_CONSTITUTION.md
 
 输出限制：
-如庞统训练状态不是 TRAINED，只能输出资料缺口、学习计划、风险提示，不得输出 AOEM 定论。
+如庞统训练状态不是 TRAINED、能力矩阵不满足任务要求或知识认证不是 CERTIFIED，只能输出资料缺口、学习计划、风险提示，不得输出 AOEM 定论。
 
 审计要求：
-赵云审计 + 墨子或张飞技术复核 + 伏羲知识来源检查
+赵云审计 + 墨子或张飞技术复核 + 伏羲知识来源检查 + AOEM 宪法检查
 ```
 
 ## 5. 数学专家任务命令
@@ -142,9 +166,11 @@ Phase-1 文档建设阶段
 4. MCP/14_Math/README.md
 5. MCP/16_Knowledge_Base/README.md
 6. MCP/19_Learning_Center/expert_training_register.md
+7. MCP/20_Expert_Training/capability_matrix.md
+8. MCP/20_Expert_Training/knowledge_certification.md
 
 输出限制：
-如华佗训练状态不是 TRAINED，只能输出假设、待验证问题和验证计划，不得输出数学理论定论。
+如华佗训练状态不是 TRAINED、能力矩阵不满足任务要求或知识认证不是 CERTIFIED，只能输出假设、待验证问题和验证计划，不得输出数学理论定论。
 
 审计要求：
 赵云审计 + 数学模型二次确认 + 伏羲知识来源检查
@@ -165,9 +191,11 @@ Phase-1 文档建设阶段
 4. MCP/15_Language/README.md
 5. MCP/16_Knowledge_Base/AOEM/README.md
 6. MCP/19_Learning_Center/expert_training_register.md
+7. MCP/20_Expert_Training/capability_matrix.md
+8. MCP/20_Expert_Training/knowledge_certification.md
 
 输出限制：
-如庄周训练状态不是 TRAINED，只能输出语言研究计划、语义问题清单和原型边界，不得输出语言设计定论。
+如庄周训练状态不是 TRAINED、能力矩阵不满足任务要求或知识认证不是 CERTIFIED，只能输出语言研究计划、语义问题清单和原型边界，不得输出语言设计定论。
 
 审计要求：
 赵云审计 + 墨子架构审批 + 伏羲知识来源检查

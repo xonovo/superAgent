@@ -15,6 +15,10 @@
 | 文档 | 路径 | 状态 | 责任角色 |
 |---|---|---|---|
 | MCP 总览 | `MCP/README.md` | DRAFT | 嬴政 / DOC-001 |
+| Capability Matrix | `MCP/20_Expert_Training/capability_matrix.md` | DRAFT | 扁鹊 / 赵云 |
+| Knowledge Certification | `MCP/20_Expert_Training/knowledge_certification.md` | DRAFT | 扁鹊 / 赵云 |
+| AOEM 宪法 | `MCP/16_Knowledge_Base/AOEM/AOEM_CONSTITUTION.md` | DRAFT | 伏羲 / 庞统 / 墨子 |
+| Decision Registry | `MCP/17_Memory_Center/decision_registry.md` | DRAFT | 仓颉 / 赵云 |
 | MCP V3.5 总控协议 | `MCP/MCP_V3_5_MASTER_CONTROL_PROTOCOL.md` | DRAFT | 女娲 / CAIO-001 |
 | MCP V3 总控协议 | `MCP/MCP_V3_MASTER_CONTROL_PROTOCOL.md` | ARCHIVED | 女娲 / CAIO-001 |
 | MCP V2.1 总控协议 | `MCP/MCP_V2_MASTER_CONTROL_PROTOCOL.md` | ARCHIVED | 女娲 / CAIO-001 |

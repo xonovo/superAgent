@@ -1,8 +1,8 @@
-# superAgent OMCF / WPF-MCP V3.5
+# superAgent OMCF / WPF-MCP V4
 
 本目录是 superAgent 的 AI 自治研发体系文档中心。
 
-`OMCF` 是 OneMan AI Company Framework，即“一人 AI 公司框架”。V3 建立知识库和长期记忆，V3.5 进一步建立专家成熟度、知识飞轮、项目记忆和经验回流。
+`OMCF` 是 OneMan AI Company Framework，即“一人 AI 公司框架”。V3 建立知识库和长期记忆，V3.5 建立专家成熟度、知识飞轮、项目记忆和经验回流。V4 不新增角色、不新增顶层目录，而是新增能力矩阵、知识认证、AOEM 宪法和决策注册表，让任务分配从“按角色”升级为“按能力和认证”。
 
 `MCP` 在本目录中只表示 `Master Control Protocol`，即内部总控协议；它不是 Anthropic 的 `Model Context Protocol`。
 
@@ -15,10 +15,10 @@ OMCF
 ├── Delivery             任务、文档、设计、开发、测试、部署
 ├── Audit                审计门禁、复审、发布阻断
 ├── Memory               知识库、长期记忆、学习、战略
-└── Training             专家成熟度、知识飞轮、经验回流
+└── Capability           能力矩阵、知识认证、宪法约束、决策注册
 ```
 
-## V3.5 核心闭环
+## V4 核心闭环
 
 ```text
 知识进入
@@ -28,6 +28,8 @@ OMCF
         -> 项目应用
           -> 经验沉淀
             -> 回流知识库
+              -> 更新能力矩阵
+                -> 更新知识认证
 ```
 
 ## 总体链路
@@ -84,19 +86,27 @@ MCP/
 6. `MCP/16_Knowledge_Base/README.md`
 7. `MCP/17_Memory_Center/README.md`
 8. `MCP/20_Expert_Training/expert_maturity_model.md`
-9. 当前任务卡和审计清单
+9. `MCP/20_Expert_Training/capability_matrix.md`
+10. `MCP/20_Expert_Training/knowledge_certification.md`
+11. 当前任务卡和审计清单
+
+V4 不新增协议文件；V4 使用 `MCP_V3_5_MASTER_CONTROL_PROTOCOL.md` 作为组织与记忆基础，并用能力矩阵、知识认证、AOEM 宪法和决策注册表作为新增执行门禁。
 
 没有知识库依据、没有项目记忆检索、没有专家成熟度依据的专业结论，不进入发布流程。
 
-## V3.5 强制门禁
+## V4 强制门禁
 
 1. 专家成熟度低于 Level 3，不得独立输出生产级方案。
 2. 专家成熟度低于 Level 4，不得独立优化核心系统。
 3. 专家成熟度低于 Level 5，不得设计新能力、新理论或新计算语言。
-4. 每个项目必须有项目级记忆。
-5. 审计失败必须进入 Failure Log。
-6. 发布完成必须进入 Lessons Learned。
-7. 可复用经验必须回流 `Knowledge_Base`。
+4. Capability Matrix 不满足任务要求，不得分配任务。
+5. Knowledge Certification 未认证，不得承接对应生产任务。
+6. AOEM 任务不得违反 AOEM Constitution。
+7. 重大选择和拒绝方案必须进入 Decision Registry。
+8. 每个正式启动的项目必须有项目级记忆。
+9. 审计失败必须进入 Failure Log。
+10. 发布完成必须进入 Lessons Learned。
+11. 可复用经验必须回流 `Knowledge_Base`。
 
 ## 人工确认红线
 

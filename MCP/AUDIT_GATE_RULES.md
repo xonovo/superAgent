@@ -24,6 +24,7 @@
 | L5 | AI 模型上线、生产数据治理、资金风险判断 | 数据质量审计、模型解释、人工复核、灰度发布 |
 | L6 | AOEM 内核、隐私计算、数学模型生产化、新语言主链路 | 双重审查、专项验证、架构审批、King Xu 人工确认 |
 | L7 | 知识库训练、专家定论、记忆归档、战略判断 | 知识来源检查、训练状态检查、记忆完整性检查 |
+| L8 | 能力矩阵、知识认证、AOEM 宪法、决策注册 | 能力边界检查、认证状态检查、宪法一致性检查、决策登记 |
 
 ## 必查项
 
@@ -56,7 +57,25 @@
 - 庄周输出语言设计定论前，训练状态必须为 `TRAINED`。
 - 训练状态以 `MCP/19_Learning_Center/expert_training_register.md` 为准。
 - 专家成熟度等级必须满足 `MCP/20_Expert_Training/expert_maturity_model.md` 的能力边界。
+- 专家能力必须满足 `MCP/20_Expert_Training/capability_matrix.md`。
+- 专家知识认证必须满足 `MCP/20_Expert_Training/knowledge_certification.md`。
 - Level 低于任务要求时不得通过审计。
+- 知识认证不是 `CERTIFIED` 时不得接对应生产任务。
+
+### AOEM 宪法审计
+
+- AOEM 任务必须引用 `MCP/16_Knowledge_Base/AOEM/AOEM_CONSTITUTION.md`。
+- AOEM 执行语义不得违反宪法。
+- AOEM State、Runtime、GPU、Privacy 相关变更不得违反宪法。
+- AOEM Constitution 修改必须由 King Xu 人工确认。
+- AOEM Constitution 修改必须进入 Decision Registry。
+
+### 决策注册审计
+
+- 重大架构选择必须进入 `MCP/17_Memory_Center/decision_registry.md`。
+- 被拒绝方案必须记录原因。
+- Capability Matrix 修改必须登记。
+- Knowledge Certification 状态变化必须登记。
 
 ### 项目记忆审计
 
@@ -134,10 +153,13 @@
 3. 历史记忆已检索。
 4. 项目记忆已检索或已说明不存在。
 5. 专家训练状态和成熟度 Level 满足输出要求。
-6. 风险项有明确处置。
-7. 测试或验证证据充分。
-8. 相关文档已经同步更新。
-9. 发布和回滚方案可执行。
+6. Capability Matrix 满足任务要求。
+7. Knowledge Certification 满足任务要求。
+8. AOEM 任务未违反 AOEM Constitution。
+9. 风险项有明确处置。
+10. 测试或验证证据充分。
+11. 相关文档已经同步更新。
+12. 发布和回滚方案可执行。
 
 ## FAIL 标准
 
@@ -154,7 +176,10 @@
 9. 任务缺少记忆检索。
 10. 专家训练状态不足却输出定论。
 11. 专家成熟度 Level 不足却输出超边界方案。
-12. 项目记忆缺失且未说明原因。
-13. AOEM 核心执行逻辑缺少双重审查。
-14. 数学模型缺少假设、验证方法或误差边界。
-15. 新语言方案未经墨子审批即进入主链路。
+12. Capability Matrix 不满足任务要求。
+13. Knowledge Certification 未认证却承接生产任务。
+14. AOEM 方案违反 AOEM Constitution。
+15. 项目记忆缺失且未说明原因。
+16. AOEM 核心执行逻辑缺少双重审查。
+17. 数学模型缺少假设、验证方法或误差边界。
+18. 新语言方案未经墨子审批即进入主链路。

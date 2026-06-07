@@ -10,6 +10,8 @@
   -> 伏羲检索知识库
   -> 鬼谷子判断战略影响
   -> 扁鹊登记新知识吸收需求
+  -> 诸葛亮查询 Capability Matrix
+  -> 赵云预检查 Knowledge Certification
   -> 诸葛亮生成任务
   -> 墨子确认架构边界
   -> 专业 Codex 执行
@@ -45,7 +47,10 @@
 6. 命中专家条件时必须添加专家协作角色。
 7. 命中专家条件时必须检查专家训练状态。
 8. 命中专家条件时必须检查专家成熟度 Level。
-9. 任务必须记录知识库引用、全局记忆引用和项目记忆引用。
+9. 命中专家条件时必须检查 Capability Matrix。
+10. 命中专业知识域时必须检查 Knowledge Certification。
+11. AOEM 任务必须检查 AOEM Constitution。
+12. 任务必须记录知识库引用、全局记忆引用和项目记忆引用。
 
 ## 专家角色触发规则
 
@@ -53,9 +58,9 @@
 
 | 专家 | 触发条件 | 训练门禁 | 必须验证 |
 |---|---|---|---|
-| 庞统 / AOEM-001 | AOEM 内核、GPU 调度、隐私计算、代数执行、运行时优化 | 必须 TRAINED，且 Level 满足任务边界 | AOEM 核心逻辑审计、GPU_dispatch_test、知识来源检查 |
-| 华佗 / MATH-001 | 代数结构、数学证明、索尔算法、量子计算、模型数理验证 | 必须 TRAINED，且 Level 满足任务边界 | math-model-audit、误差边界、知识来源检查 |
-| 庄周 / LANG-001 | 新语言语义、DSL、指令集、编译优化、自动演化 | 必须 TRAINED，且 Level 满足任务边界 | lang-design-audit、compiler-sanity-test、墨子审批 |
+| 庞统 / AOEM-001 | AOEM 内核、GPU 调度、隐私计算、代数执行、运行时优化 | 必须 TRAINED，Level 和认证满足任务边界 | AOEM Constitution、Capability Matrix、Knowledge Certification |
+| 华佗 / MATH-001 | 代数结构、数学证明、索尔算法、量子计算、模型数理验证 | 必须 TRAINED，Level 和认证满足任务边界 | Capability Matrix、Knowledge Certification、math-model-audit |
+| 庄周 / LANG-001 | 新语言语义、DSL、指令集、编译优化、自动演化 | 必须 TRAINED，Level 和认证满足任务边界 | Capability Matrix、Knowledge Certification、墨子审批 |
 
 ## 任务依赖图规则
 
@@ -102,9 +107,12 @@
 2. 相关文档已经更新
 3. 知识库引用有效
 4. 记忆检索已完成
-5. 专家训练状态满足输出要求
-6. 测试结果可追溯
-7. 审计报告已归档
-8. 发布与回滚负责人明确
-9. 项目经验回流路径已确认
-10. 命中人工确认红线的任务已经得到 King Xu 确认
+5. Capability Matrix 检查通过
+6. Knowledge Certification 检查通过
+7. AOEM 任务未违反 AOEM Constitution
+8. 专家训练状态满足输出要求
+9. 测试结果可追溯
+10. 审计报告已归档
+11. 发布与回滚负责人明确
+12. 项目经验回流路径已确认
+13. 命中人工确认红线的任务已经得到 King Xu 确认

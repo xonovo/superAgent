@@ -23,6 +23,8 @@ V3.5 不再继续增加角色，而是让已有专家真正成长。专家能力
 | 文档 | 说明 |
 |---|---|
 | `expert_maturity_model.md` | 专家成熟度 Level 0-5 |
+| `capability_matrix.md` | 能力矩阵 |
+| `knowledge_certification.md` | 知识认证 |
 | `knowledge_flywheel.md` | 知识飞轮与经验回流 |
 | `training_task_template.md` | 专家训练任务模板 |
 | `maturity_assessment.md` | 专家成熟度评估记录 |
@@ -41,3 +43,5 @@ V3.5 不再继续增加角色，而是让已有专家真正成长。专家能力
 2. 专家成熟度低于 Level 4，不得独立优化核心系统。
 3. 专家成熟度低于 Level 5，不得设计新能力、新理论或新计算语言。
 4. 成熟度升级必须有训练证据、项目应用证据和赵云审计记录。
+5. 能力矩阵不满足任务要求时不得分配任务。
+6. 知识认证未通过时不得承接对应生产任务。

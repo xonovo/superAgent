@@ -1,6 +1,6 @@
 # OMCF Agent Role Matrix
 
-本文档定义 superAgent OMCF / WPF-MCP V3.5 的永久组织、记忆机构、训练体系与项目执行角色。
+本文档定义 superAgent OMCF / WPF-MCP V4 的永久组织、记忆机构、训练体系、能力门禁与项目执行角色。
 
 ## 总控原则
 
@@ -11,9 +11,10 @@
 5. 鬼谷子维护战略推演，所有重大路线判断必须记录。
 6. 扁鹊维护学习中心，所有新知识必须先吸收、蒸馏、训练再使用。
 7. 扁鹊维护专家成熟度，专家能力以 Level 0-5 表示。
-8. 诸葛亮负责项目管理，不兼任架构师。
-9. 墨子负责架构、技术路线、模块边界和技术标准。
-10. 赵云有权阻断发布，并可要求二次复审。
+8. 诸葛亮分配任务前必须查询 Capability Matrix。
+9. 赵云审计任务前必须检查 Knowledge Certification。
+10. 墨子负责架构、技术路线、模块边界和技术标准。
+11. 赵云有权阻断发布，并可要求二次复审。
 
 ## 决策与总控层
 
@@ -54,6 +55,8 @@
 3. 庄周未达到 `TRAINED` 状态前，不得输出语言设计定论。
 4. 专家训练状态以 `MCP/19_Learning_Center/expert_training_register.md` 为准。
 5. 专家成熟度以 `MCP/20_Expert_Training/expert_maturity_model.md` 为准。
+6. 能力矩阵以 `MCP/20_Expert_Training/capability_matrix.md` 为准。
+7. 知识认证以 `MCP/20_Expert_Training/knowledge_certification.md` 为准。
 
 ## 升级到女娲或 King Xu 的条件
 

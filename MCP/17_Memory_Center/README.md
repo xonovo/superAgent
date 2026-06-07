@@ -17,6 +17,7 @@
 | 文档 | 说明 |
 |---|---|
 | `decision_log.md` | 决策记录 |
+| `decision_registry.md` | 决策注册表 |
 | `architecture_decision_record.md` | 架构决策记录 |
 | `task_history.md` | 任务历史 |
 | `failure_lessons.md` | 失败经验 |
