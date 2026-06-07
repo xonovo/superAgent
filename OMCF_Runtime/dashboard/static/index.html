@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OMCF Dashboard Alpha</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="side-rail">
+        <div class="brand-block">
+          <div class="brand-mark">O</div>
+          <div>
+            <div class="brand-title">OMCF</div>
+            <div class="brand-subtitle">Dashboard Alpha</div>
+          </div>
+        </div>
+        <nav class="nav-stack" aria-label="Dashboard sections">
+          <button class="nav-button active" data-view="agents">组织树</button>
+          <button class="nav-button" data-view="tasks">任务流</button>
+          <button class="nav-button" data-view="timeline">对话轨迹</button>
+          <button class="nav-button" data-view="queue">Human Queue</button>
+          <button class="nav-button" data-view="metrics">Metrics</button>
+          <button class="nav-button" data-view="providers">Provider 链</button>
+        </nav>
+        <div class="rail-footer">
+          <span class="status-dot" id="socket-dot"></span>
+          <span id="socket-label">Connecting</span>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Agent Control Plane Observability</p>
+            <h1 id="project-title">株洲物业监管平台</h1>
+          </div>
+          <div class="topbar-meta">
+            <div>
+              <span class="meta-label">Runtime</span>
+              <strong id="runtime-label">OMCF Runtime V2.6 frozen</strong>
+            </div>
+            <div>
+              <span class="meta-label">Updated</span>
+              <strong id="updated-at">--</strong>
+            </div>
+          </div>
+        </header>
+
+        <section class="summary-grid" id="summary-grid"></section>
+
+        <section class="view-panel active" id="view-agents">
+          <div class="section-head">
+            <div>
+              <h2>Agent 组织树</h2>
+              <p>每个角色使用固定头像徽章和运行状态。</p>
+            </div>
+          </div>
+          <div class="org-layout" id="org-layout"></div>
+        </section>
+
+        <section class="view-panel" id="view-tasks">
+          <div class="section-head">
+            <div>
+              <h2>任务流</h2>
+              <p>从 Production Run 到下一轮 Alpha Run 的状态链。</p>
+            </div>
+          </div>
+          <div class="task-flow" id="task-flow"></div>
+        </section>
+
+        <section class="view-panel" id="view-timeline">
+          <div class="section-head">
+            <div>
+              <h2>Agent 对话轨迹</h2>
+              <p>按 Provider 调用顺序展示真实协作痕迹。</p>
+            </div>
+          </div>
+          <div class="timeline" id="timeline"></div>
+        </section>
+
+        <section class="view-panel" id="view-queue">
+          <div class="section-head">
+            <div>
+              <h2>Human Queue</h2>
+              <p>Alpha 按钮只记录 Dashboard 决策日志，不改 Runtime 队列。</p>
+            </div>
+          </div>
+          <div class="queue-table" id="human-queue"></div>
+        </section>
+
+        <section class="view-panel" id="view-metrics">
+          <div class="section-head">
+            <div>
+              <h2>Metrics</h2>
+              <p>来自 Runtime metrics 目录的角色运行指标。</p>
+            </div>
+          </div>
+          <div class="metric-grid" id="metrics"></div>
+        </section>
+
+        <section class="view-panel" id="view-providers">
+          <div class="section-head">
+            <div>
+              <h2>Provider 调用链</h2>
+              <p>Provider Registry 和真实调用记录的合并视图。</p>
+            </div>
+          </div>
+          <div class="provider-grid" id="providers"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
