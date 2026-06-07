@@ -79,6 +79,30 @@ python OMCF_Runtime/runtime/omcf_runtime.py list-providers
 python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-5 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台" --sensitive-scope database_schema --sensitive-scope aoem_core_logic
 ```
 
+## Runtime V2.6
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-6 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台"
+```
+
+V2.6 增加三项能力：
+
+1. Provider Adapter：启用的 provider 会产出 `PROVIDER_EXECUTED`。
+2. Human Queue：人工审批请求会写入本地队列。
+3. Metrics Center：每次运行会生成运行指标，并更新本地 Agent 指标。
+
+查看 Human Queue：
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py list-human-queue
+```
+
+查看 Metrics：
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py list-metrics
+```
+
 运行产物会写入：
 
 ```text
@@ -95,3 +119,4 @@ OMCF_Runtime/tasks/runs/
 4. Runtime 使用 MCP 文档作为制度来源。
 5. V2 只记录外部 Agent 调用合同，不直接调用远程模型。
 6. V2.5 只定义 Provider 合同和人工审批状态，不保存 API Key。
+7. V2.6 只执行已启用的本地 provider adapter；外部 API provider 未配置前不会伪造成功。

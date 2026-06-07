@@ -12,7 +12,8 @@
   "provider": {
     "provider_id": "provider.codex.manual",
     "model": "codex-current",
-    "route_status": "READY_FOR_PROVIDER"
+    "route_status": "READY_FOR_PROVIDER",
+    "adapter_status": "PROVIDER_EXECUTED"
   },
   "agent_call": {
     "adapter": "provider_layer",
@@ -24,7 +25,13 @@
   "human_approval": {
     "required": false,
     "scope": "",
-    "status": ""
+    "status": "",
+    "queue_path": ""
+  },
+  "metrics": {
+    "provider_success_rate": 0,
+    "human_approval_rate": 0,
+    "metrics_path": ""
   },
   "status": "READY",
   "gates": {

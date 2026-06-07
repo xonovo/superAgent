@@ -35,3 +35,19 @@ python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-5 --project-name "�
 ```powershell
 python OMCF_Runtime/runtime/omcf_runtime.py list-providers
 ```
+
+## Runtime V2.6
+
+Runtime V2.6 adds provider adapter execution, Human Queue, and Metrics Center.
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py start-project-v2-6 --project-name "株洲物业监管平台" --project-code "demo_property" --project-type "政务 / 物业监管 / 数据平台"
+```
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py list-human-queue
+```
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py list-metrics
+```

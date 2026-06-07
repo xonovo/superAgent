@@ -1,5 +1,5 @@
 {
-  "version": "OMCF_Provider_Layer_V2_5",
+  "version": "OMCF_Provider_Layer_V2_6",
   "default_provider": "provider.codex.manual",
   "providers": [
     {
@@ -7,6 +7,7 @@
       "name": "Codex Manual Handoff",
       "kind": "agent_provider",
       "execution_mode": "manual_handoff",
+      "adapter_path": "OMCF_Runtime/providers/codex",
       "enabled": true,
       "requires_human_approval": false,
       "status": "available",
@@ -17,6 +18,7 @@
       "name": "OpenAI GPT Adapter",
       "kind": "model_provider",
       "execution_mode": "api_adapter",
+      "adapter_path": "OMCF_Runtime/providers/openai",
       "enabled": false,
       "requires_human_approval": true,
       "status": "adapter_required",
@@ -27,6 +29,7 @@
       "name": "Claude Adapter",
       "kind": "model_provider",
       "execution_mode": "api_adapter",
+      "adapter_path": "OMCF_Runtime/providers/claude",
       "enabled": false,
       "requires_human_approval": true,
       "status": "adapter_required",
@@ -37,6 +40,7 @@
       "name": "Local LLM Adapter",
       "kind": "model_provider",
       "execution_mode": "local_adapter",
+      "adapter_path": "OMCF_Runtime/providers/local",
       "enabled": false,
       "requires_human_approval": false,
       "status": "adapter_required",
@@ -47,6 +51,7 @@
       "name": "AOEM Runtime Adapter",
       "kind": "runtime_provider",
       "execution_mode": "runtime_adapter",
+      "adapter_path": "OMCF_Runtime/providers/aoem",
       "enabled": false,
       "requires_human_approval": true,
       "status": "adapter_required",

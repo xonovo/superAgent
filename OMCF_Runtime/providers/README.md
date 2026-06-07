@@ -14,7 +14,7 @@ A provider is an execution backend:
 Codex, GPT, Claude, local LLM, AOEM, or another tool runtime
 ```
 
-Runtime V2.5 records provider assignments and invocation contracts. It does not hardcode model-specific behavior into agent logic.
+Runtime V2.6 records provider assignments, invocation contracts, and adapter execution results. It does not hardcode model-specific behavior into agent logic.
 
 ## Registry
 
@@ -31,5 +31,6 @@ Each provider declares:
 3. Whether the adapter is enabled.
 4. Whether human approval is required.
 5. Supported capabilities.
+6. Adapter path.
 
 External adapters can be enabled later without changing the agent registry.

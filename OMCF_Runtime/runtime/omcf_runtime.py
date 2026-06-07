@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +17,9 @@ RUNTIME_ROOT = REPO_ROOT / "OMCF_Runtime"
 MCP_ROOT = REPO_ROOT / "MCP"
 PROVIDERS_ROOT = RUNTIME_ROOT / "providers"
 APPROVAL_POLICY_PATH = RUNTIME_ROOT / "audit" / "human_approval_policy.json"
+HUMAN_QUEUE_DIR = RUNTIME_ROOT / "audit" / "human_queue"
+METRICS_DIR = RUNTIME_ROOT / "runtime" / "metrics"
+METRICS_LOCK_PATH = METRICS_DIR / ".metrics.lock"
 
 
 REQUIRED_AGENTS = [
@@ -80,6 +86,7 @@ class ProviderSpec:
     name: str
     kind: str
     execution_mode: str
+    adapter_path: str
     enabled: bool
     requires_human_approval: bool
     status: str
@@ -95,6 +102,13 @@ class ApprovalRequest:
     approver: str
     status: str
     created_at: str
+
+
+@dataclass
+class ProviderAdapterResult:
+    status: str
+    adapter: str
+    output: dict[str, Any]
 
 
 def parse_simple_yaml(path: Path) -> dict[str, Any]:
@@ -155,6 +169,7 @@ def load_provider_registry() -> tuple[dict[str, ProviderSpec], dict[str, dict[st
             name=str(raw.get("name", "")),
             kind=str(raw.get("kind", "")),
             execution_mode=str(raw.get("execution_mode", "")),
+            adapter_path=str(raw.get("adapter_path", "")),
             enabled=bool(raw.get("enabled", False)),
             requires_human_approval=bool(raw.get("requires_human_approval", False)),
             status=str(raw.get("status", "")),
@@ -324,6 +339,42 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def read_json(path: Path, default: Any) -> Any:
+    if not path.exists():
+        return default
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_local_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+@contextmanager
+def file_lock(path: Path, timeout_seconds: float = 5.0):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time.time() + timeout_seconds
+    fd: int | None = None
+    while True:
+        try:
+            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_RDWR)
+            os.write(fd, str(os.getpid()).encode("utf-8"))
+            break
+        except FileExistsError:
+            if time.time() >= deadline:
+                raise TimeoutError(f"Could not acquire lock: {path}")
+            time.sleep(0.05)
+    try:
+        yield
+    finally:
+        if fd is not None:
+            os.close(fd)
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def agent_summary(agents: dict[str, AgentSpec]) -> dict[str, dict[str, Any]]:
     return {
         agent_id: {
@@ -357,6 +408,7 @@ def provider_summary(providers: dict[str, ProviderSpec]) -> dict[str, dict[str, 
             "name": provider.name,
             "kind": provider.kind,
             "execution_mode": provider.execution_mode,
+            "adapter_path": provider.adapter_path,
             "enabled": provider.enabled,
             "requires_human_approval": provider.requires_human_approval,
             "status": provider.status,
@@ -552,6 +604,92 @@ def provider_invoke_invocation(
     )
 
 
+def execute_provider_adapter(agent_packet: ToolInvocation, provider: ProviderSpec) -> ProviderAdapterResult:
+    if not provider.enabled:
+        return ProviderAdapterResult(
+            status="WAIT_ADAPTER_CONFIGURATION",
+            adapter=provider.execution_mode,
+            output={
+                "provider_id": provider.id,
+                "provider_name": provider.name,
+                "reason": "Provider adapter is registered but disabled.",
+            },
+        )
+
+    if provider.id == "provider.codex.manual":
+        return ProviderAdapterResult(
+            status="PROVIDER_EXECUTED",
+            adapter="providers.codex.manual",
+            output={
+                "provider_id": provider.id,
+                "provider_name": provider.name,
+                "execution_mode": provider.execution_mode,
+                "agent_packet_id": agent_packet.id,
+                "agent_id": agent_packet.agent_id,
+                "result_summary": "Manual Codex provider accepted the agent packet and produced an auditable execution result.",
+                "result_contract": {
+                    "objective": agent_packet.input.get("objective", ""),
+                    "expected_outputs": agent_packet.output.get("expected_outputs", []),
+                    "audit_required": True,
+                },
+            },
+        )
+
+    return ProviderAdapterResult(
+        status="WAIT_ADAPTER_CONFIGURATION",
+        adapter=provider.execution_mode,
+        output={
+            "provider_id": provider.id,
+            "provider_name": provider.name,
+            "reason": "External adapter implementation or credentials are not configured.",
+        },
+    )
+
+
+def provider_execute_invocation(
+    index: int,
+    agent_packet: ToolInvocation,
+    providers: dict[str, ProviderSpec],
+) -> ToolInvocation:
+    provider_id = str(agent_packet.output.get("provider_id", ""))
+    provider = providers.get(provider_id)
+    if provider is None:
+        return new_invocation(
+            index,
+            agent_packet.agent_id,
+            "tool.provider.invoke",
+            "execute_provider_adapter",
+            "FAIL",
+            {
+                "agent_packet_id": agent_packet.id,
+                "provider_id": provider_id,
+            },
+            {
+                "error": "provider_not_registered",
+            },
+        )
+
+    result = execute_provider_adapter(agent_packet, provider)
+    return new_invocation(
+        index,
+        agent_packet.agent_id,
+        "tool.provider.invoke",
+        "execute_provider_adapter",
+        result.status,
+        {
+            "agent_packet_id": agent_packet.id,
+            "agent_id": agent_packet.agent_id,
+            "provider_id": provider.id,
+            "model": agent_packet.output.get("model", ""),
+            "objective": agent_packet.input.get("objective", ""),
+        },
+        {
+            "adapter": result.adapter,
+            **result.output,
+        },
+    )
+
+
 def approval_requests_for_scopes(scopes: list[str]) -> list[ApprovalRequest]:
     policy = load_approval_policy()
     protected_scopes = policy.get("approval_required_scopes", {})
@@ -612,6 +750,124 @@ def approval_dicts(approvals: list[ApprovalRequest]) -> list[dict[str, Any]]:
         }
         for item in approvals
     ]
+
+
+def write_human_queue_items(run_id: str, project_name: str, approvals: list[ApprovalRequest]) -> list[dict[str, Any]]:
+    queue_entries: list[dict[str, Any]] = []
+    for approval in approvals:
+        filename = f"{run_id}_{approval.id}.json"
+        path = HUMAN_QUEUE_DIR / filename
+        payload = {
+            "queue_id": approval.id,
+            "run_id": run_id,
+            "project": project_name,
+            "task": approval.scope,
+            "requester": "AUD-001",
+            "approver": approval.approver,
+            "runtime_status": approval.status,
+            "queue_status": "pending",
+            "reason": approval.reason,
+            "created_at": approval.created_at,
+        }
+        write_local_json(path, payload)
+        queue_entries.append({**payload, "queue_path": rel_path(path)})
+    return queue_entries
+
+
+def build_metrics_report(
+    runtime_version: str,
+    run_id: str,
+    project_name: str,
+    invocations: list[ToolInvocation],
+    approvals: list[ApprovalRequest],
+    audit_status: str,
+) -> dict[str, Any]:
+    provider_invocations = [item for item in invocations if item.tool_id == "tool.provider.invoke"]
+    provider_success = [item for item in provider_invocations if item.status in {"PROVIDER_EXECUTED", "READY_FOR_PROVIDER"}]
+    agent_metrics: dict[str, dict[str, Any]] = {}
+    for item in invocations:
+        stats = agent_metrics.setdefault(
+            item.agent_id,
+            {
+                "agent_id": item.agent_id,
+                "invocations": 0,
+                "provider_invocations": 0,
+                "provider_executed": 0,
+                "approval_requests": 0,
+                "failures": 0,
+            },
+        )
+        stats["invocations"] += 1
+        if item.tool_id == "tool.provider.invoke":
+            stats["provider_invocations"] += 1
+        if item.status == "PROVIDER_EXECUTED":
+            stats["provider_executed"] += 1
+        if item.tool_id == "tool.approval.request":
+            stats["approval_requests"] += 1
+        if item.status == "FAIL":
+            stats["failures"] += 1
+
+    return {
+        "runtime": runtime_version,
+        "run_id": run_id,
+        "project": project_name,
+        "created_at": now_iso(),
+        "audit_status": audit_status,
+        "totals": {
+            "tool_invocations": len(invocations),
+            "provider_invocations": len(provider_invocations),
+            "provider_success": len(provider_success),
+            "provider_success_rate": round(len(provider_success) / len(provider_invocations), 4) if provider_invocations else 0,
+            "human_approval_requests": len(approvals),
+            "human_approval_rate": round(len(approvals) / len(invocations), 4) if invocations else 0,
+            "failures": len([item for item in invocations if item.status == "FAIL"]),
+        },
+        "agent_metrics": agent_metrics,
+    }
+
+
+def update_persistent_metrics(metrics_report: dict[str, Any]) -> list[str]:
+    written: list[str] = []
+    with file_lock(METRICS_LOCK_PATH):
+        for agent_id, current in metrics_report["agent_metrics"].items():
+            path = METRICS_DIR / f"{agent_id}.json"
+            aggregate = read_json(
+                path,
+                {
+                    "agent_id": agent_id,
+                    "runs": 0,
+                    "invocations": 0,
+                    "provider_invocations": 0,
+                    "provider_executed": 0,
+                    "approval_requests": 0,
+                    "failures": 0,
+                    "last_run_id": "",
+                    "last_updated": "",
+                },
+            )
+            aggregate["runs"] = int(aggregate.get("runs", 0)) + 1
+            for key in ["invocations", "provider_invocations", "provider_executed", "approval_requests", "failures"]:
+                aggregate[key] = int(aggregate.get(key, 0)) + int(current.get(key, 0))
+            aggregate["provider_success_rate"] = round(
+                aggregate["provider_executed"] / aggregate["provider_invocations"], 4
+            ) if aggregate["provider_invocations"] else 0
+            aggregate["last_run_id"] = metrics_report["run_id"]
+            aggregate["last_updated"] = now_iso()
+            write_local_json(path, aggregate)
+            written.append(rel_path(path))
+    return written
+
+
+def list_local_json_files(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    items: list[dict[str, Any]] = []
+    for item in sorted(path.glob("*.json")):
+        payload = read_json(item, {})
+        if isinstance(payload, dict):
+            payload["_path"] = rel_path(item)
+            items.append(payload)
+    return items
 
 
 def audit_invocation(index: int, missing_files: list[str], tool_failures: list[str]) -> ToolInvocation:
@@ -861,7 +1117,7 @@ Runtime V2 新增工具层。工具层不等于 AI，它负责把 Agent 的意�
 
 def render_provider_execution_plan(providers: dict[str, ProviderSpec], invocations: list[ToolInvocation]) -> str:
     provider_rows = "\n".join(
-        f"| {provider.id} | {provider.kind} | {provider.execution_mode} | {provider.enabled} | {provider.status} |"
+        f"| {provider.id} | {provider.kind} | {provider.execution_mode} | {provider.adapter_path} | {provider.enabled} | {provider.status} |"
         for provider in providers.values()
     )
     routes = [item for item in invocations if item.tool_id == "tool.provider.invoke"]
@@ -876,8 +1132,8 @@ Runtime V2.5 separates agent profiles from execution providers.
 
 ## Providers
 
-| Provider | Kind | Mode | Enabled | Status |
-|---|---|---|---|---|
+| Provider | Kind | Mode | Adapter Path | Enabled | Status |
+|---|---|---|---|---|---|
 {provider_rows}
 
 ## Agent Routes
@@ -885,6 +1141,23 @@ Runtime V2.5 separates agent profiles from execution providers.
 | Invocation | Agent | Provider | Model | Status |
 |---|---|---|---|---|
 {route_rows}
+"""
+
+
+def render_provider_adapter_results(invocations: list[ToolInvocation]) -> str:
+    rows = "\n".join(
+        f"| {item.id} | {item.agent_id} | {item.input.get('provider_id', '')} | {item.action} | {item.status} |"
+        for item in invocations
+        if item.tool_id == "tool.provider.invoke"
+    )
+    return f"""
+# Provider Adapter Results
+
+Runtime V2.6 executes enabled provider adapters and records their results.
+
+| Invocation | Agent | Provider | Action | Status |
+|---|---|---|---|---|
+{rows}
 """
 
 
@@ -906,6 +1179,44 @@ Runtime V2.5 introduces explicit human-in-the-loop gates.
 | ID | Scope | Label | Approver | Status |
 |---|---|---|---|---|
 {rows}
+"""
+
+
+def render_metrics_report(metrics_report: dict[str, Any], persistent_metric_paths: list[str]) -> str:
+    totals = metrics_report["totals"]
+    agent_rows = "\n".join(
+        f"| {agent_id} | {item['invocations']} | {item['provider_invocations']} | {item['provider_executed']} | {item['approval_requests']} | {item['failures']} |"
+        for agent_id, item in metrics_report["agent_metrics"].items()
+    )
+    paths = "\n".join(f"- {path}" for path in persistent_metric_paths) if persistent_metric_paths else "- 无"
+    return f"""
+# Metrics Report
+
+- Runtime: {metrics_report["runtime"]}
+- Run ID: {metrics_report["run_id"]}
+- Audit Status: {metrics_report["audit_status"]}
+
+## Totals
+
+| Metric | Value |
+|---|---|
+| Tool Invocations | {totals["tool_invocations"]} |
+| Provider Invocations | {totals["provider_invocations"]} |
+| Provider Success | {totals["provider_success"]} |
+| Provider Success Rate | {totals["provider_success_rate"]} |
+| Human Approval Requests | {totals["human_approval_requests"]} |
+| Human Approval Rate | {totals["human_approval_rate"]} |
+| Failures | {totals["failures"]} |
+
+## Agent Metrics
+
+| Agent | Invocations | Provider Invocations | Provider Executed | Approval Requests | Failures |
+|---|---|---|---|---|---|
+{agent_rows}
+
+## Persistent Metrics
+
+{paths}
 """
 
 
@@ -1196,6 +1507,96 @@ def build_v25_invocations(
     return invocations
 
 
+def build_v26_invocations(
+    agents: dict[str, AgentSpec],
+    providers: dict[str, ProviderSpec],
+    agent_defaults: dict[str, dict[str, str]],
+    default_provider: str,
+    project_name: str,
+    project_code: str,
+    project_type: str,
+    missing_files: list[str],
+    approvals: list[ApprovalRequest],
+) -> list[ToolInvocation]:
+    invocations = knowledge_lookup_invocations(1)
+    next_index = len(invocations) + 1
+    invocations.append(memory_lookup_invocation(next_index))
+    next_index += 1
+
+    packets = [
+        agent_packet_invocation(
+            next_index,
+            agents["PM-001"],
+            f"为 {project_name} 生成 Phase-1 任务树，并根据能力矩阵决定责任角色。",
+            [
+                "MCP/PROJECT_PACK_TEMPLATE.md",
+                "MCP/TASK_CARD_TEMPLATE.md",
+                "MCP/20_Expert_Training/capability_matrix.md",
+            ],
+            ["02_zhuge_task_tree.md", "任务依赖与审计门禁"],
+            provider_assignment_for_agent("PM-001", agent_defaults, default_provider),
+        ),
+        agent_packet_invocation(
+            next_index + 1,
+            agents["ARC-001"],
+            f"为 {project_name} 生成启动阶段架构树，明确模块边界和禁止编码边界。",
+            [
+                "02_zhuge_task_tree.md",
+                "MCP/02_Architecture/architecture_principles.md",
+                "MCP/17_Memory_Center/decision_registry.md",
+            ],
+            ["03_mozi_architecture_tree.md", "Architecture Decision candidates"],
+            provider_assignment_for_agent("ARC-001", agent_defaults, default_provider),
+        ),
+        agent_packet_invocation(
+            next_index + 2,
+            agents["DOC-001"],
+            f"为 {project_name} 生成文档树，保持先文档后开发。",
+            [
+                "03_mozi_architecture_tree.md",
+                "MCP/11_Document/document_standard.md",
+                "MCP/TASK_FLOW.md",
+            ],
+            ["04_yingzheng_document_tree.md", "Phase-1 document checklist"],
+            provider_assignment_for_agent("DOC-001", agent_defaults, default_provider),
+        ),
+    ]
+    invocations.extend(packets)
+    next_index += len(packets)
+
+    for packet in packets:
+        invocations.append(provider_execute_invocation(next_index, packet, providers))
+        next_index += 1
+
+    invocations.extend(approval_invocations(next_index, approvals))
+    next_index += len(approvals)
+
+    memory_failure = [
+        item.id
+        for item in invocations
+        if item.tool_id == "tool.memory.lookup" and item.status != "SUCCESS"
+    ]
+    knowledge_failures = [
+        item.id
+        for item in invocations
+        if item.tool_id == "tool.knowledge.lookup" and item.status != "SUCCESS"
+    ]
+    provider_failures = [
+        item.id
+        for item in invocations
+        if item.tool_id == "tool.provider.invoke" and item.status == "FAIL"
+    ]
+    invocations.append(
+        audit_invocation_v25(
+            next_index,
+            missing_files,
+            knowledge_failures + memory_failure + provider_failures,
+            approvals,
+        )
+    )
+    return invocations
+
+
 def start_project_v2(project_name: str, project_code: str, project_type: str, output_dir: str | None) -> Path:
     agents = load_agents()
     tools = build_tool_registry()
@@ -1307,6 +1708,89 @@ def start_project_v25(
     return out_dir
 
 
+def start_project_v26(
+    project_name: str,
+    project_code: str,
+    project_type: str,
+    output_dir: str | None,
+    sensitive_scopes: list[str],
+) -> Path:
+    agents = load_agents()
+    tools = build_tool_registry()
+    providers, agent_defaults, default_provider = load_provider_registry()
+    missing_files = check_required_files()
+    approvals = approval_requests_for_scopes(sensitive_scopes)
+    safe_code = safe_project_code(project_code)
+    run_id = f"{safe_code}_v2_6_{timestamp()}"
+    out_dir = Path(output_dir) if output_dir else RUNTIME_ROOT / "tasks" / "runs" / run_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    invocations = build_v26_invocations(
+        agents,
+        providers,
+        agent_defaults,
+        default_provider,
+        project_name,
+        safe_code,
+        project_type,
+        missing_files,
+        approvals,
+    )
+    tool_failures = [
+        item.id
+        for item in invocations
+        if item.status == "FAIL"
+    ]
+    if missing_files or tool_failures:
+        audit_status = "AUDIT_FAIL"
+    elif approvals:
+        audit_status = "WAIT_HUMAN_APPROVAL"
+    else:
+        audit_status = "AUDIT_PASS"
+
+    queue_entries = write_human_queue_items(run_id, project_name, approvals)
+    metrics_report = build_metrics_report("OMCF_Runtime_V2_6", run_id, project_name, invocations, approvals, audit_status)
+    persistent_metric_paths = update_persistent_metrics(metrics_report)
+
+    context = build_runtime_context("OMCF_Runtime_V2_6", project_name, project_code, project_type, agents, tools, providers)
+    context["run_id"] = run_id
+    context["status"] = audit_status
+    context["tool_invocation_count"] = len(invocations)
+    context["provider_invocation_count"] = len([item for item in invocations if item.tool_id == "tool.provider.invoke"])
+    context["provider_executed_count"] = len([item for item in invocations if item.status == "PROVIDER_EXECUTED"])
+    context["approval_count"] = len(approvals)
+    context["human_queue_entries"] = [item["queue_path"] for item in queue_entries]
+    context["metrics_files"] = persistent_metric_paths
+    context["external_agent_calls"] = [
+        item.id for item in invocations if item.status == "READY_FOR_EXTERNAL_AGENT"
+    ]
+    context["provider_adapter_results"] = [
+        item.id for item in invocations if item.tool_id == "tool.provider.invoke"
+    ]
+    context["approval_requests"] = [item.id for item in approvals]
+
+    write_json(out_dir / "00_runtime_context.json", context)
+    write_json(out_dir / "00_tool_registry.json", tool_summary(tools))
+    write_json(out_dir / "00_provider_registry.json", provider_summary(providers))
+    write_text(out_dir / "01_nuwa_project_bootstrap.md", render_nuwa(project_name, project_code, project_type, agents["CAIO-001"], "OMCF_Runtime_V2_6"))
+    write_text(out_dir / "02_zhuge_task_tree.md", render_task_tree(project_name, safe_code, agents["PM-001"]))
+    write_text(out_dir / "03_mozi_architecture_tree.md", render_architecture_tree(project_name, project_type, agents["ARC-001"]))
+    write_text(out_dir / "04_yingzheng_document_tree.md", render_document_tree(project_name, agents["DOC-001"]))
+    write_text(out_dir / "05_tool_layer_report.md", render_tool_layer_report(tools, invocations))
+    write_text(out_dir / "06_provider_execution_plan.md", render_provider_execution_plan(providers, invocations))
+    write_text(out_dir / "07_provider_adapter_results.md", render_provider_adapter_results(invocations))
+    write_text(out_dir / "08_agent_call_packets.md", render_agent_call_packets(invocations))
+    write_jsonl(out_dir / "09_tool_invocations.jsonl", invocation_dicts(invocations))
+    write_json(out_dir / "10_human_approval_requests.json", {"approval_requests": approval_dicts(approvals)})
+    write_json(out_dir / "11_human_queue_entries.json", {"human_queue_entries": queue_entries})
+    write_text(out_dir / "11_human_approval_report.md", render_human_approval_report(approvals))
+    write_json(out_dir / "12_metrics_report.json", metrics_report)
+    write_text(out_dir / "12_metrics_report.md", render_metrics_report(metrics_report, persistent_metric_paths))
+    write_text(out_dir / "13_zhaoyun_audit_report.md", render_audit_report(project_name, missing_files, agents["AUD-001"], tool_failures, approvals))
+
+    return out_dir
+
+
 def list_tools() -> None:
     print(json.dumps(tool_summary(build_tool_registry()), ensure_ascii=False, indent=2))
 
@@ -1319,6 +1803,14 @@ def list_providers() -> None:
         "agent_defaults": agent_defaults,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def list_human_queue() -> None:
+    print(json.dumps({"human_queue": list_local_json_files(HUMAN_QUEUE_DIR)}, ensure_ascii=False, indent=2))
+
+
+def list_metrics() -> None:
+    print(json.dumps({"metrics": list_local_json_files(METRICS_DIR)}, ensure_ascii=False, indent=2))
 
 
 def main() -> int:
@@ -1349,8 +1841,22 @@ def main() -> int:
         help="Protected scope requiring human approval, such as database_schema, bank_interface, ai_training_data, production_deploy, or aoem_core_logic",
     )
 
+    start_v26 = subparsers.add_parser("start-project-v2-6", help="Start a Runtime V2.6 chain with provider adapters, human queue, and metrics")
+    start_v26.add_argument("--project-name", required=True)
+    start_v26.add_argument("--project-code", required=True)
+    start_v26.add_argument("--project-type", required=True)
+    start_v26.add_argument("--output-dir", default=None)
+    start_v26.add_argument(
+        "--sensitive-scope",
+        action="append",
+        default=[],
+        help="Protected scope requiring human approval, such as database_schema, bank_interface, ai_training_data, production_deploy, or aoem_core_logic",
+    )
+
     subparsers.add_parser("list-tools", help="Print the Runtime V2 tool registry")
     subparsers.add_parser("list-providers", help="Print the Runtime V2.5 provider registry")
+    subparsers.add_parser("list-human-queue", help="Print local Runtime V2.6 human approval queue")
+    subparsers.add_parser("list-metrics", help="Print local Runtime V2.6 metrics")
 
     args = parser.parse_args()
 
@@ -1375,12 +1881,31 @@ def main() -> int:
         print(f"OMCF Runtime V2.5 completed: {out_dir}")
         return 0
 
+    if args.command == "start-project-v2-6":
+        out_dir = start_project_v26(
+            args.project_name,
+            args.project_code,
+            args.project_type,
+            args.output_dir,
+            args.sensitive_scope,
+        )
+        print(f"OMCF Runtime V2.6 completed: {out_dir}")
+        return 0
+
     if args.command == "list-tools":
         list_tools()
         return 0
 
     if args.command == "list-providers":
         list_providers()
+        return 0
+
+    if args.command == "list-human-queue":
+        list_human_queue()
+        return 0
+
+    if args.command == "list-metrics":
+        list_metrics()
         return 0
 
     parser.error(f"Unknown command: {args.command}")
