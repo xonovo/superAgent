@@ -50,6 +50,18 @@
 
         <section class="summary-grid" id="summary-grid"></section>
 
+        <section class="command-strip">
+          <div>
+            <p class="eyebrow">Command Center Alpha</p>
+            <h2>指挥台</h2>
+            <p>按钮会写入 Dashboard 命令日志，等待人工确认后交给现有 Runtime 或 Codex Provider。</p>
+          </div>
+          <div class="command-actions">
+            <button class="primary-button" id="start-next-run">启动下一任务</button>
+            <button class="secondary-button" id="open-command-log">查看命令日志</button>
+          </div>
+        </section>
+
         <section class="view-panel active" id="view-agents">
           <div class="section-head">
             <div>
@@ -108,6 +120,17 @@
             </div>
           </div>
           <div class="provider-grid" id="providers"></div>
+        </section>
+
+        <section class="detail-panel" id="detail-panel" aria-live="polite">
+          <div class="detail-head">
+            <div>
+              <p class="eyebrow" id="detail-kicker">Trace</p>
+              <h2 id="detail-title">选择角色或任务查看全过程日志</h2>
+            </div>
+            <button class="secondary-button" id="close-detail">关闭</button>
+          </div>
+          <div class="detail-body" id="detail-body"></div>
         </section>
       </main>
     </div>

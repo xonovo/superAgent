@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -30,6 +31,7 @@ PROJECT_MEMORY_DIR = (
     / "Zhuzhou_Property_Platform"
 )
 DECISION_LOG = STATE_DIR / "human_queue_decisions.jsonl"
+RUN_REQUEST_LOG = STATE_DIR / "run_requests.jsonl"
 
 
 ROLE_CATALOG: list[dict[str, Any]] = [
@@ -272,6 +274,14 @@ class QueueDecision(BaseModel):
     note: str | None = None
 
 
+class StartRunRequest(BaseModel):
+    project: str | None = None
+    task_id: str | None = None
+    agent_id: str | None = None
+    title: str | None = None
+    note: str | None = None
+
+
 app = FastAPI(title="OMCF Dashboard Alpha", version="alpha")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -380,6 +390,17 @@ def load_queue_decisions() -> dict[str, dict[str, Any]]:
         if item_key:
             decisions[item_key] = row
     return decisions
+
+
+def load_run_requests() -> list[dict[str, Any]]:
+    rows = read_jsonl(RUN_REQUEST_LOG)
+    return [row for row in rows if row.get("command_id")]
+
+
+def append_jsonl(path: Path, row: dict[str, Any]) -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def load_provider_invocations() -> list[dict[str, Any]]:
@@ -510,7 +531,7 @@ def artifact_exists(relative_path: str) -> bool:
     return (REPO_ROOT / relative_path).exists()
 
 
-def build_tasks() -> list[dict[str, Any]]:
+def build_tasks(commands: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     specs = [
         (
             "PRUN-001",
@@ -569,22 +590,32 @@ def build_tasks() -> list[dict[str, Any]]:
             "MCP/17_Memory_Center/Project_Memory/Zhuzhou_Property_Platform/Alpha_Run_002/codex_adapter_result.json",
         ),
     ]
+    command_by_task: dict[str, dict[str, Any]] = {}
+    for command in commands or []:
+        task_id = command.get("task_id")
+        if task_id:
+            command_by_task[task_id] = command
+
     tasks = []
     for task_id, title, assignee, phase, artifact in specs:
         exists = artifact_exists(artifact)
+        command = command_by_task.get(task_id)
+        status = "complete" if exists else "waiting"
+        if command and status != "complete":
+            status = "queued"
         tasks.append(
             {
                 "id": task_id,
                 "title": title,
                 "assignee": assignee,
                 "phase": phase,
-                "status": "complete" if exists else "waiting",
+                "status": status,
                 "artifact": artifact,
+                "last_command": command,
             }
         )
 
-    tasks.extend(
-        [
+    next_tasks = [
             {
                 "id": "NEXT-001",
                 "title": "Project Pack V1 资料补齐",
@@ -618,7 +649,14 @@ def build_tasks() -> list[dict[str, Any]]:
                 "artifact": "MCP/02_Architecture",
             },
         ]
-    )
+    for task in next_tasks:
+        command = command_by_task.get(task["id"])
+        if command:
+            task["status"] = "queued"
+            task["last_command"] = command
+        else:
+            task["last_command"] = None
+    tasks.extend(next_tasks)
     return tasks
 
 
@@ -649,9 +687,10 @@ def build_snapshot() -> dict[str, Any]:
     metrics = load_metrics()
     queue = load_human_queue()
     invocations = load_provider_invocations()
+    commands = load_run_requests()
     providers = load_providers(invocations)
     agents = build_agents(profiles, metrics, queue, invocations)
-    tasks = build_tasks()
+    tasks = build_tasks(commands)
     completed = sum(1 for task in tasks if task["status"] == "complete")
 
     return {
@@ -676,7 +715,38 @@ def build_snapshot() -> dict[str, Any]:
         "providers": providers,
         "provider_invocations": invocations,
         "timeline": build_timeline(invocations),
+        "commands": commands[-20:],
     }
+
+
+def find_agent(agent_id: str) -> dict[str, Any] | None:
+    return next((agent for agent in build_snapshot()["agents"] if agent["id"] == agent_id), None)
+
+
+def find_task(task_id: str) -> dict[str, Any] | None:
+    return next((task for task in build_snapshot()["tasks"] if task["id"] == task_id), None)
+
+
+def record_decision_for_item(item_key: str, decision: str, note: str | None = None) -> dict[str, Any]:
+    allowed = {"approve", "reject", "return"}
+    if decision not in allowed:
+        raise HTTPException(status_code=400, detail="decision must be approve, reject, or return")
+
+    queue_items = {queue_item_key(item): item for item in load_human_queue()}
+    if item_key not in queue_items:
+        raise HTTPException(status_code=404, detail="human queue item not found")
+
+    row = {
+        "item_key": item_key,
+        "decision": decision,
+        "note": note or "",
+        "decided_at": datetime.now().isoformat(timespec="seconds"),
+        "decider": "King Xu",
+        "dashboard_alpha_only": True,
+        "runtime_queue_mutated": False,
+    }
+    append_jsonl(DECISION_LOG, row)
+    return row
 
 
 @app.get("/")
@@ -689,27 +759,98 @@ def snapshot() -> dict[str, Any]:
     return build_snapshot()
 
 
+@app.post("/api/runs/start")
+def start_run(request: StartRunRequest) -> dict[str, Any]:
+    snapshot_data = build_snapshot()
+    tasks = {task["id"]: task for task in snapshot_data["tasks"]}
+    agents = {agent["id"]: agent for agent in snapshot_data["agents"]}
+
+    task = tasks.get(request.task_id or "") if request.task_id else None
+    agent = agents.get(request.agent_id or "") if request.agent_id else None
+    if request.task_id and not task:
+        raise HTTPException(status_code=404, detail="task_id not found")
+    if request.agent_id and not agent:
+        raise HTTPException(status_code=404, detail="agent_id not found")
+
+    resolved_agent_id = request.agent_id or (task or {}).get("assignee") or "PM-001"
+    resolved_agent = agents.get(resolved_agent_id, {})
+    command_id = f"DASH-RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid4().hex[:6]}"
+    row = {
+        "command_id": command_id,
+        "type": "RUN_START_REQUEST",
+        "status": "QUEUED_FOR_RUNTIME",
+        "project": request.project or snapshot_data["project"]["name"],
+        "task_id": request.task_id or "NEXT-001",
+        "task_title": request.title or (task or {}).get("title") or "Dashboard requested run",
+        "agent_id": resolved_agent_id,
+        "agent": resolved_agent.get("nickname", resolved_agent_id),
+        "note": request.note or "",
+        "created_by": "King Xu",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "dashboard_alpha_only": True,
+        "runtime_core_changed": False,
+        "runtime_handoff_status": "PENDING_OPERATOR_OR_EXISTING_RUNTIME_ADAPTER",
+        "suggested_next_step": "Hand this command to the existing OMCF Runtime or Codex provider adapter after human confirmation.",
+    }
+    append_jsonl(RUN_REQUEST_LOG, row)
+    return {"ok": True, "command": row}
+
+
+@app.get("/api/agents/{agent_id}/timeline")
+def agent_timeline(agent_id: str) -> dict[str, Any]:
+    snapshot_data = build_snapshot()
+    agent = next((item for item in snapshot_data["agents"] if item["id"] == agent_id), None)
+    if not agent:
+        raise HTTPException(status_code=404, detail="agent_id not found")
+    timeline = [item for item in snapshot_data["timeline"] if item.get("agent_id") == agent_id]
+    commands = [item for item in snapshot_data["commands"] if item.get("agent_id") == agent_id]
+    return {
+        "agent": agent,
+        "timeline": timeline,
+        "commands": commands,
+        "metrics": agent.get("metrics", {}),
+    }
+
+
+@app.get("/api/tasks/{task_id}/trace")
+def task_trace(task_id: str) -> dict[str, Any]:
+    snapshot_data = build_snapshot()
+    task = next((item for item in snapshot_data["tasks"] if item["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail="task_id not found")
+    artifact = task.get("artifact") or ""
+    artifact_name = Path(artifact).name
+    timeline = [
+        item
+        for item in snapshot_data["timeline"]
+        if item.get("agent_id") == task.get("assignee")
+        or (artifact_name and artifact_name in str(item.get("artifact", "")))
+    ]
+    commands = [item for item in snapshot_data["commands"] if item.get("task_id") == task_id]
+    return {
+        "task": task,
+        "assignee": find_agent(task.get("assignee", "")),
+        "timeline": timeline,
+        "commands": commands,
+        "artifact_exists": artifact_exists(artifact),
+    }
+
+
 @app.post("/api/human-queue/{item_key:path}/decision")
 def record_queue_decision(item_key: str, decision: QueueDecision) -> dict[str, Any]:
-    allowed = {"approve", "reject", "return"}
-    if decision.decision not in allowed:
-        raise HTTPException(status_code=400, detail="decision must be approve, reject, or return")
+    row = record_decision_for_item(item_key, decision.decision, decision.note)
+    return {"ok": True, "decision": row}
 
-    queue_items = {queue_item_key(item): item for item in load_human_queue()}
-    if item_key not in queue_items:
-        raise HTTPException(status_code=404, detail="human queue item not found")
 
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    row = {
-        "item_key": item_key,
-        "decision": decision.decision,
-        "note": decision.note or "",
-        "decided_at": datetime.now().isoformat(timespec="seconds"),
-        "decider": "King Xu",
-        "dashboard_alpha_only": True,
-    }
-    with DECISION_LOG.open("a", encoding="utf-8") as file:
-        file.write(json.dumps(row, ensure_ascii=False) + "\n")
+@app.post("/api/human-queue/{item_key:path}/approve")
+def approve_queue_item(item_key: str) -> dict[str, Any]:
+    row = record_decision_for_item(item_key, "approve", "Approved from Command Center Alpha")
+    return {"ok": True, "decision": row}
+
+
+@app.post("/api/human-queue/{item_key:path}/reject")
+def reject_queue_item(item_key: str) -> dict[str, Any]:
+    row = record_decision_for_item(item_key, "reject", "Rejected from Command Center Alpha")
     return {"ok": True, "decision": row}
 
 

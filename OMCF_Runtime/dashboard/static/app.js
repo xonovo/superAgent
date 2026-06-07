@@ -1,6 +1,7 @@
 const state = {
   snapshot: null,
   activeView: "agents",
+  lastSignature: "",
 };
 
 const statusClass = (value, prefix = "status") =>
@@ -27,11 +28,12 @@ function renderSummary(snapshot) {
   const queue = snapshot.human_queue.filter((item) => item.queue_status === "pending").length;
   const providers = snapshot.providers.filter((provider) => provider.enabled).length;
   const completion = Math.round(snapshot.task_summary.completion_rate * 100);
+  const commands = snapshot.commands?.length || 0;
   byId("summary-grid").innerHTML = `
     <div class="summary-item"><span>Running Agents</span><strong>${running}</strong></div>
     <div class="summary-item"><span>Task Completion</span><strong>${completion}%</strong></div>
     <div class="summary-item"><span>Human Queue</span><strong>${queue}</strong></div>
-    <div class="summary-item"><span>Enabled Providers</span><strong>${providers}</strong></div>
+    <div class="summary-item"><span>Commands</span><strong>${commands}</strong></div>
   `;
 }
 
@@ -73,6 +75,9 @@ function renderAgentNode(agent) {
         </div>
         <div class="agent-role">${escapeHtml(agent.role)}</div>
         <div class="agent-id">${escapeHtml(agent.id)} · ${invocations} invocations</div>
+        <div class="inline-actions">
+          <button class="mini-button agent-trace-button" data-agent-id="${escapeHtml(agent.id)}">日志</button>
+        </div>
       </div>
     </article>
   `;
@@ -90,7 +95,13 @@ function renderTasks(snapshot) {
             <div class="artifact">${escapeHtml(task.artifact)}</div>
           </div>
           <div class="small">${escapeHtml(agentName(task.assignee))}</div>
-          <div class="small">${escapeHtml(task.phase)}</div>
+          <div>
+            <div class="small">${escapeHtml(task.phase)}</div>
+            <div class="inline-actions">
+              <button class="mini-button start-run-button" data-task-id="${escapeHtml(task.id)}">启动</button>
+              <button class="mini-button task-trace-button" data-task-id="${escapeHtml(task.id)}">Trace</button>
+            </div>
+          </div>
         </article>
       `;
     })
@@ -161,6 +172,29 @@ function renderQueue(snapshot) {
     .join("");
 }
 
+function renderCommandLog(snapshot) {
+  const commands = snapshot.commands || [];
+  if (!commands.length) {
+    return `<div class="empty-state">暂无 Dashboard 命令。</div>`;
+  }
+  return commands
+    .slice()
+    .reverse()
+    .map(
+      (command) => `
+        <article class="trace-row">
+          <div>
+            <strong>${escapeHtml(command.task_title)}</strong>
+            <div class="artifact">${escapeHtml(command.command_id)}</div>
+          </div>
+          <div class="small">${escapeHtml(command.agent)} · ${escapeHtml(command.status)}</div>
+          <div class="small">${escapeHtml(command.created_at)}</div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
 function renderMetrics(snapshot) {
   if (!snapshot.metrics.length) {
     byId("metrics").innerHTML = `<div class="empty-state">暂无 metrics 文件。</div>`;
@@ -207,11 +241,34 @@ function renderProviders(snapshot) {
     .join("");
 }
 
+function snapshotSignature(snapshot) {
+  return JSON.stringify({
+    agents: snapshot.agents.map((agent) => [agent.id, agent.status, agent.metrics?.invocations ?? 0]),
+    tasks: snapshot.tasks.map((task) => [task.id, task.status, task.last_command?.command_id || ""]),
+    queue: snapshot.human_queue.map((item) => [
+      item.item_key,
+      item.queue_status,
+      item.dashboard_decision?.decision || "",
+    ]),
+    metrics: snapshot.metrics.map((metric) => [metric.agent_id, metric.last_updated]),
+    providers: snapshot.providers.map((provider) => [
+      provider.id,
+      provider.status,
+      provider.last_status || "",
+    ]),
+    timeline: snapshot.timeline.length,
+    commands: snapshot.commands?.map((command) => [command.command_id, command.status]) || [],
+  });
+}
+
 function render(snapshot) {
+  const signature = snapshotSignature(snapshot);
   state.snapshot = snapshot;
   byId("project-title").textContent = snapshot.project.name;
   byId("runtime-label").textContent = snapshot.project.runtime_baseline;
   byId("updated-at").textContent = snapshot.generated_at;
+  if (signature === state.lastSignature) return;
+  state.lastSignature = signature;
   renderSummary(snapshot);
   renderAgents(snapshot);
   renderTasks(snapshot);
@@ -224,6 +281,34 @@ function render(snapshot) {
 async function loadSnapshot() {
   const response = await fetch("/api/snapshot");
   render(await response.json());
+}
+
+async function startRun(taskId = "NEXT-001") {
+  const task = state.snapshot?.tasks?.find((item) => item.id === taskId);
+  const response = await fetch("/api/runs/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      project: state.snapshot?.project?.name,
+      task_id: taskId,
+      agent_id: task?.assignee,
+      title: task?.title,
+      note: "Requested from Command Center Alpha UI",
+    }),
+  });
+  if (!response.ok) throw new Error("run start failed");
+  const result = await response.json();
+  await loadSnapshot();
+  showDetail("Command", "启动请求已创建", `
+    <article class="trace-row">
+      <div>
+        <strong>${escapeHtml(result.command.task_title)}</strong>
+        <div class="artifact">${escapeHtml(result.command.command_id)}</div>
+      </div>
+      <div class="small">${escapeHtml(result.command.status)}</div>
+      <div class="small">${escapeHtml(result.command.suggested_next_step)}</div>
+    </article>
+  `);
 }
 
 function connectSocket() {
@@ -249,12 +334,127 @@ function connectSocket() {
 }
 
 async function recordDecision(itemKey, decision) {
-  await fetch(`/api/human-queue/${encodeURIComponent(itemKey)}/decision`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ decision, note: "Recorded from Dashboard Alpha UI" }),
-  });
+  const encoded = encodeURIComponent(itemKey);
+  if (decision === "approve" || decision === "reject") {
+    await fetch(`/api/human-queue/${encoded}/${decision}`, { method: "POST" });
+  } else {
+    await fetch(`/api/human-queue/${encoded}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, note: "Returned from Command Center Alpha UI" }),
+    });
+  }
   await loadSnapshot();
+}
+
+async function showAgentTrace(agentId) {
+  const response = await fetch(`/api/agents/${encodeURIComponent(agentId)}/timeline`);
+  if (!response.ok) throw new Error("agent trace failed");
+  const trace = await response.json();
+  const body = [
+    renderTraceSummary(trace.agent.nickname, trace.agent.role, trace.metrics),
+    renderTraceEvents(trace.timeline, "该角色暂无 Provider 调用记录。"),
+    renderTraceCommands(trace.commands),
+  ].join("");
+  showDetail("Agent Timeline", `${trace.agent.nickname} 全过程日志`, body);
+}
+
+async function showTaskTrace(taskId) {
+  const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}/trace`);
+  if (!response.ok) throw new Error("task trace failed");
+  const trace = await response.json();
+  const assignee = trace.assignee?.nickname || trace.task.assignee;
+  const body = [
+    renderTaskSummary(trace.task, assignee, trace.artifact_exists),
+    renderTraceEvents(trace.timeline, "该任务暂无直接调用记录。"),
+    renderTraceCommands(trace.commands),
+  ].join("");
+  showDetail("Task Trace", `${trace.task.title} 执行链`, body);
+}
+
+function renderTraceSummary(title, subtitle, metrics = {}) {
+  return `
+    <div class="trace-summary">
+      <div>
+        <span class="meta-label">Target</span>
+        <strong>${escapeHtml(title)}</strong>
+      </div>
+      <div>
+        <span class="meta-label">Role</span>
+        <strong>${escapeHtml(subtitle)}</strong>
+      </div>
+      <div>
+        <span class="meta-label">Invocations</span>
+        <strong>${escapeHtml(metrics.invocations ?? 0)}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function renderTaskSummary(task, assignee, artifactExists) {
+  return `
+    <div class="trace-summary">
+      <div>
+        <span class="meta-label">Task</span>
+        <strong>${escapeHtml(task.id)}</strong>
+      </div>
+      <div>
+        <span class="meta-label">Assignee</span>
+        <strong>${escapeHtml(assignee)}</strong>
+      </div>
+      <div>
+        <span class="meta-label">Artifact</span>
+        <strong>${artifactExists ? "exists" : "pending"}</strong>
+      </div>
+    </div>
+    <div class="artifact">${escapeHtml(task.artifact)}</div>
+  `;
+}
+
+function renderTraceEvents(events, emptyText) {
+  if (!events.length) return `<div class="empty-state">${escapeHtml(emptyText)}</div>`;
+  return events
+    .map(
+      (item) => `
+        <article class="trace-row">
+          <div>
+            <strong>${escapeHtml(item.task)}</strong>
+            <div class="artifact">${escapeHtml(item.artifact || "")}</div>
+          </div>
+          <div class="small">${escapeHtml(item.run_name)} · ${escapeHtml(item.provider_id)}</div>
+          <span class="provider-status ${statusClass(item.status, "provider")}">${escapeHtml(item.status)}</span>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderTraceCommands(commands) {
+  if (!commands.length) return `<div class="empty-state">暂无 Dashboard 命令记录。</div>`;
+  return commands
+    .slice()
+    .reverse()
+    .map(
+      (item) => `
+        <article class="trace-row">
+          <div>
+            <strong>${escapeHtml(item.type)}</strong>
+            <div class="artifact">${escapeHtml(item.command_id)}</div>
+          </div>
+          <div class="small">${escapeHtml(item.status)} · ${escapeHtml(item.created_at)}</div>
+          <span class="status-pill status-waiting">${escapeHtml(item.runtime_handoff_status)}</span>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function showDetail(kicker, title, body) {
+  byId("detail-kicker").textContent = kicker;
+  byId("detail-title").textContent = title;
+  byId("detail-body").innerHTML = body;
+  byId("detail-panel").classList.add("active");
+  byId("detail-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 document.addEventListener("click", (event) => {
@@ -273,6 +473,47 @@ document.addEventListener("click", (event) => {
     recordDecision(action.dataset.key, action.dataset.decision).catch(() => {
       byId("socket-label").textContent = "Decision failed";
     });
+    return;
+  }
+
+  const startButton = event.target.closest(".start-run-button");
+  if (startButton) {
+    startRun(startButton.dataset.taskId).catch(() => {
+      byId("socket-label").textContent = "Start failed";
+    });
+    return;
+  }
+
+  const agentTrace = event.target.closest(".agent-trace-button");
+  if (agentTrace) {
+    showAgentTrace(agentTrace.dataset.agentId).catch(() => {
+      byId("socket-label").textContent = "Trace failed";
+    });
+    return;
+  }
+
+  const taskTrace = event.target.closest(".task-trace-button");
+  if (taskTrace) {
+    showTaskTrace(taskTrace.dataset.taskId).catch(() => {
+      byId("socket-label").textContent = "Trace failed";
+    });
+    return;
+  }
+
+  if (event.target.closest("#start-next-run")) {
+    startRun("NEXT-001").catch(() => {
+      byId("socket-label").textContent = "Start failed";
+    });
+    return;
+  }
+
+  if (event.target.closest("#open-command-log")) {
+    showDetail("Command Log", "Dashboard 命令日志", renderCommandLog(state.snapshot));
+    return;
+  }
+
+  if (event.target.closest("#close-detail")) {
+    byId("detail-panel").classList.remove("active");
   }
 });
 
