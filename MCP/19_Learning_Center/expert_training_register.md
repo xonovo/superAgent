@@ -10,8 +10,12 @@
 
 ## 专家训练状态
 
-| 专家 | 代号 | 领域 | 当前状态 | 必须知识库 | 最近训练记录 | 输出限制 |
-|---|---|---|---|---|---|---|
-| 庞统 | AOEM-001 | AOEM 内核 | UNTRAINED | `MCP/16_Knowledge_Base/AOEM` | 待填写 | 不得输出 AOEM 定论 |
-| 华佗 | MATH-001 | 代数语义与数学模型 | UNTRAINED | `MCP/16_Knowledge_Base/AOEM`、`MCP/14_Math` | 待填写 | 不得输出数学理论定论 |
-| 庄周 | LANG-001 | 新语言与指令集 | UNTRAINED | `MCP/16_Knowledge_Base/AOEM`、`MCP/15_Language` | 待填写 | 不得输出语言设计定论 |
+| 专家 | 代号 | 领域 | 当前状态 | 成熟度 | 必须知识库 | 最近训练记录 | 输出限制 |
+|---|---|---|---|---|---|---|---|
+| 庞统 | AOEM-001 | AOEM 内核 | UNTRAINED | Level 0 | `MCP/16_Knowledge_Base/AOEM` | 待填写 | 不得输出 AOEM 定论 |
+| 华佗 | MATH-001 | 代数语义与数学模型 | UNTRAINED | Level 0 | `MCP/16_Knowledge_Base/AOEM`、`MCP/14_Math` | 待填写 | 不得输出数学理论定论 |
+| 庄周 | LANG-001 | 新语言与指令集 | UNTRAINED | Level 0 | `MCP/16_Knowledge_Base/AOEM`、`MCP/15_Language` | 待填写 | 不得输出语言设计定论 |
+
+## V3.5 成熟度说明
+
+成熟度等级以 `MCP/20_Expert_Training/expert_maturity_model.md` 为准。训练状态表示是否完成训练流程，成熟度表示专家能独立承担的能力边界。

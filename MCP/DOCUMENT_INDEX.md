@@ -15,7 +15,8 @@
 | 文档 | 路径 | 状态 | 责任角色 |
 |---|---|---|---|
 | MCP 总览 | `MCP/README.md` | DRAFT | 嬴政 / DOC-001 |
-| MCP V3 总控协议 | `MCP/MCP_V3_MASTER_CONTROL_PROTOCOL.md` | DRAFT | 女娲 / CAIO-001 |
+| MCP V3.5 总控协议 | `MCP/MCP_V3_5_MASTER_CONTROL_PROTOCOL.md` | DRAFT | 女娲 / CAIO-001 |
+| MCP V3 总控协议 | `MCP/MCP_V3_MASTER_CONTROL_PROTOCOL.md` | ARCHIVED | 女娲 / CAIO-001 |
 | MCP V2.1 总控协议 | `MCP/MCP_V2_MASTER_CONTROL_PROTOCOL.md` | ARCHIVED | 女娲 / CAIO-001 |
 | Agent 角色矩阵 | `MCP/AGENT_ROLE_MATRIX.md` | DRAFT | 女娲 / CAIO-001 |
 | Codex 命令模板 | `MCP/CODEX_COMMAND_TEMPLATES.md` | DRAFT | 女娲 / 诸葛亮 |
@@ -49,3 +50,4 @@
 | 记忆中心 | `MCP/17_Memory_Center` | DRAFT | 仓颉 / CMO-001 |
 | 战略中心 | `MCP/18_Strategy_Center` | DRAFT | 鬼谷子 / CSO-001 |
 | 学习中心 | `MCP/19_Learning_Center` | DRAFT | 扁鹊 / CLO-001 |
+| 专家训练 | `MCP/20_Expert_Training` | DRAFT | 扁鹊 / CLO-001 |
