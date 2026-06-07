@@ -1,0 +1,9 @@
+{
+  "task_id": "OMCF-ALPHA-002-CODEX-001",
+  "project": "株洲物业监管平台",
+  "agent_id": "PM-001",
+  "agent": "诸葛亮",
+  "provider_id": "provider.codex",
+  "output_name": "02_codex_project_pack_intake.md",
+  "prompt": "You are Codex executing as OMCF provider.codex for the Zhuzhou Property Supervision Platform. Work in read-only mode. Do not edit files. Read these repository files if needed: MCP/17_Memory_Center/Project_Memory/Zhuzhou_Property_Platform/Production_Run_001/02_zhuge_task_tree.md, MCP/17_Memory_Center/Project_Memory/Zhuzhou_Property_Platform/Production_Run_001/04_yingzheng_prd.md, MCP/17_Memory_Center/Project_Memory/Zhuzhou_Property_Platform/Alpha_Run_001/03_zhuge_codex_task_plan.md. Return a concise Markdown artifact titled 'Project Pack V1 Intake Checklist'. Include sections: Required Materials, Protected Scopes, First Interview Questions, Acceptance Criteria. Do not claim database access, GPT access, GitHub PR access, or AOEM execution."
+}

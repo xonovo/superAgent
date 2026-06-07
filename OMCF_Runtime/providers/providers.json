@@ -1,16 +1,27 @@
 {
   "version": "OMCF_Provider_Layer_V2_6",
-  "default_provider": "provider.codex.manual",
+  "default_provider": "provider.codex",
   "providers": [
     {
+      "id": "provider.codex",
+      "name": "Codex CLI Adapter",
+      "kind": "agent_provider",
+      "execution_mode": "codex_cli_exec",
+      "adapter_path": "OMCF_Runtime/providers/codex",
+      "enabled": true,
+      "requires_human_approval": false,
+      "status": "available",
+      "capabilities": ["code_work", "repo_analysis", "document_generation", "agent_reasoning"]
+    },
+    {
       "id": "provider.codex.manual",
-      "name": "Codex Manual Handoff",
+      "name": "Codex Manual Handoff Compatibility Alias",
       "kind": "agent_provider",
       "execution_mode": "manual_handoff",
       "adapter_path": "OMCF_Runtime/providers/codex",
       "enabled": true,
       "requires_human_approval": false,
-      "status": "available",
+      "status": "deprecated_alias",
       "capabilities": ["code_work", "repo_analysis", "document_generation", "agent_reasoning"]
     },
     {
@@ -60,23 +71,23 @@
   ],
   "agent_defaults": {
     "CAIO-001": {
-      "provider_id": "provider.codex.manual",
+      "provider_id": "provider.codex",
       "model": "codex-current"
     },
     "PM-001": {
-      "provider_id": "provider.codex.manual",
+      "provider_id": "provider.codex",
       "model": "codex-current"
     },
     "ARC-001": {
-      "provider_id": "provider.codex.manual",
+      "provider_id": "provider.codex",
       "model": "codex-current"
     },
     "DOC-001": {
-      "provider_id": "provider.codex.manual",
+      "provider_id": "provider.codex",
       "model": "codex-current"
     },
     "AUD-001": {
-      "provider_id": "provider.codex.manual",
+      "provider_id": "provider.codex",
       "model": "codex-current"
     }
   }

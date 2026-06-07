@@ -4,6 +4,8 @@ import argparse
 import json
 import os
 import re
+import subprocess
+import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -509,17 +511,27 @@ def memory_lookup_invocation(index: int) -> ToolInvocation:
         for item in project_memory.iterdir()
         if item.is_dir() and not item.name.startswith(".")
     ] if project_memory.exists() else []
+    forbidden_slots = {"WPF", "NOVOVM", "Wallet", "Official_Website"}
+    forbidden_existing = sorted(slot for slot in project_slots if slot in forbidden_slots)
+    slots_without_readme = sorted(
+        slot
+        for slot in project_slots
+        if not (project_memory / slot / "README.md").exists()
+    )
+    status = "SUCCESS" if template.exists() and not forbidden_existing and not slots_without_readme else "FAIL"
     return new_invocation(
         index,
         "CAIO-001",
         "tool.memory.lookup",
         "check_project_memory_template",
-        "SUCCESS" if template.exists() and not project_slots else "FAIL",
+        status,
         {"template": rel_path(template)},
         {
             "template_exists": template.exists(),
             "project_slots": project_slots,
-            "policy": "Project_Memory keeps template only until a real project is explicitly started.",
+            "forbidden_project_slots": forbidden_existing,
+            "slots_without_readme": slots_without_readme,
+            "policy": "Project_Memory keeps only the template plus explicitly started project memories with README evidence. Forbidden placeholder slots are not allowed.",
         },
     )
 
@@ -613,6 +625,22 @@ def execute_provider_adapter(agent_packet: ToolInvocation, provider: ProviderSpe
                 "provider_id": provider.id,
                 "provider_name": provider.name,
                 "reason": "Provider adapter is registered but disabled.",
+            },
+        )
+
+    if provider.id == "provider.codex":
+        return ProviderAdapterResult(
+            status="READY_FOR_CODEX_ADAPTER",
+            adapter="providers.codex.codex_cli",
+            output={
+                "provider_id": provider.id,
+                "provider_name": provider.name,
+                "execution_mode": provider.execution_mode,
+                "agent_packet_id": agent_packet.id,
+                "agent_id": agent_packet.agent_id,
+                "result_summary": "Codex CLI adapter is available. Use runtime command invoke-codex with a task file for real execution.",
+                "runtime_command": "python OMCF_Runtime/runtime/omcf_runtime.py invoke-codex --task-file <task.json> --output-dir <dir>",
+                "audit_required": True,
             },
         )
 
@@ -1813,6 +1841,30 @@ def list_metrics() -> None:
     print(json.dumps({"metrics": list_local_json_files(METRICS_DIR)}, ensure_ascii=False, indent=2))
 
 
+def invoke_codex_provider(task_file: str, output_dir: str, sandbox: str, timeout_seconds: int) -> int:
+    adapter = PROVIDERS_ROOT / "codex" / "codex_adapter.py"
+    command = [
+        sys.executable,
+        str(adapter),
+        "--task-file",
+        task_file,
+        "--output-dir",
+        output_dir,
+        "--sandbox",
+        sandbox,
+        "--timeout-seconds",
+        str(timeout_seconds),
+    ]
+    result = subprocess.run(
+        command,
+        cwd=REPO_ROOT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return result.returncode
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="OMCF Runtime")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1857,6 +1909,12 @@ def main() -> int:
     subparsers.add_parser("list-providers", help="Print the Runtime V2.5 provider registry")
     subparsers.add_parser("list-human-queue", help="Print local Runtime V2.6 human approval queue")
     subparsers.add_parser("list-metrics", help="Print local Runtime V2.6 metrics")
+
+    invoke_codex = subparsers.add_parser("invoke-codex", help="Invoke the real local Codex CLI provider adapter")
+    invoke_codex.add_argument("--task-file", required=True)
+    invoke_codex.add_argument("--output-dir", required=True)
+    invoke_codex.add_argument("--sandbox", default="read-only", choices=["read-only", "workspace-write", "danger-full-access"])
+    invoke_codex.add_argument("--timeout-seconds", type=int, default=600)
 
     args = parser.parse_args()
 
@@ -1907,6 +1965,14 @@ def main() -> int:
     if args.command == "list-metrics":
         list_metrics()
         return 0
+
+    if args.command == "invoke-codex":
+        return invoke_codex_provider(
+            task_file=args.task_file,
+            output_dir=args.output_dir,
+            sandbox=args.sandbox,
+            timeout_seconds=args.timeout_seconds,
+        )
 
     parser.error(f"Unknown command: {args.command}")
     return 2

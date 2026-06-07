@@ -1,12 +1,33 @@
 # Codex Provider Adapter
 
-Codex is the default manual handoff provider for Runtime V2.6.
+Codex is the primary software-development provider for OMCF Alpha.
 
-This adapter is intentionally explicit:
+Runtime V2.6 remains frozen. This adapter is an execution adapter improvement, not a Runtime version upgrade.
 
-1. Runtime creates a provider invocation.
-2. Runtime records the agent packet, provider route, and output contract.
-3. Codex or the current operator can execute the task using the generated packet.
-4. The result must return to the audit chain before downstream execution.
+## Adapter
 
-The adapter does not bind any OMCF agent to Codex permanently. Agents remain profiles; Codex is only one provider implementation.
+```text
+OMCF_Runtime/providers/codex/codex_adapter.py
+```
+
+The adapter calls:
+
+```powershell
+codex exec --ephemeral --sandbox read-only -C <repo> --output-last-message <artifact> <prompt>
+```
+
+## Runtime Route
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py invoke-codex --task-file <task.json> --output-dir <dir>
+```
+
+## Guarantees
+
+1. It uses the real local Codex CLI.
+2. It writes a provider result JSON.
+3. It writes the final Codex message as an artifact.
+4. It records `mock=false` and `simulated=false`.
+5. It defaults to read-only sandbox execution.
+
+The adapter does not bind OMCF agents permanently to Codex. Agents remain profiles; Codex is one provider implementation.

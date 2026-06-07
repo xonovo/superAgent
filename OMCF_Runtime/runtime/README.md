@@ -36,6 +36,10 @@ python OMCF_Runtime/runtime/omcf_runtime.py list-human-queue
 python OMCF_Runtime/runtime/omcf_runtime.py list-metrics
 ```
 
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py invoke-codex --task-file <task.json> --output-dir <dir>
+```
+
 ## 输出
 
 Runtime V1 会生成：
@@ -67,3 +71,9 @@ Runtime V2.6 额外生成：
 2. Human Queue Entries
 3. Metrics Report
 4. Local aggregate metrics
+
+Codex Adapter 真实调用：
+
+```text
+invoke-codex -> providers/codex/codex_adapter.py -> codex exec
+```

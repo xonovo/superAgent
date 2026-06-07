@@ -4,3 +4,4 @@
 |---|---|---|---|---|---|---|---|---|
 | OMCF-PRUN-001 | 株洲物业监管平台 | First real Codex provider production run | CAIO-001, PM-001, ARC-001, DOC-001, DB-001, DATA-001, AUD-001 | 2026-06-07 | 2026-06-07 | AUDIT_PASS | DEC-RUNTIME-0001, DEC-PROD-0001 | AUD-ZZW-PRUN-001 |
 | OMCF-ALPHA-001 | 株洲物业监管平台 | Alpha provider verification: Codex, GPT, GitHub | PM-001, DOC-001, AUD-001 | 2026-06-08 | 2026-06-08 | PARTIAL_SUCCESS_BLOCKED_BY_GPT_PROVIDER_CONFIG | DEC-RUNTIME-0001 | AUD-ZZW-ALPHA-001 |
+| OMCF-ALPHA-002 | 株洲物业监管平台 | True Codex CLI adapter invocation | PM-001, AUD-001 | 2026-06-08 | 2026-06-08 | AUDIT_PASS | DEC-ALPHA-0002 | AUD-ZZW-ALPHA-002 |

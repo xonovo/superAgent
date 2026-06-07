@@ -18,3 +18,4 @@ Runtime V2.5 introduces three important statuses:
 2. `WAIT_ADAPTER_CONFIGURATION`: provider exists but its adapter is not enabled.
 3. `WAIT_HUMAN_APPROVAL`: protected scope requires King Xu approval before execution continues.
 4. `PROVIDER_EXECUTED`: enabled provider adapter executed and returned an auditable result.
+5. `READY_FOR_CODEX_ADAPTER`: provider.codex is available and requires explicit `invoke-codex` task execution.

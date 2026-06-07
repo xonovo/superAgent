@@ -24,3 +24,4 @@ It is not a placeholder slot. It was created because the first OMCF production r
 |---|---|---|---|
 | Production_Run_001 | 2026-06-07 | AUDIT_PASS | First real Codex provider production run for project startup, task tree, architecture tree, PRD, database analysis, data quality analysis, and audit. |
 | Alpha_Run_001 | 2026-06-08 | PARTIAL_SUCCESS_BLOCKED_BY_GPT_PROVIDER_CONFIG | Verified real Codex chain and real GitHub repository chain; GPT chain blocked by missing API configuration and was not faked. |
+| Alpha_Run_002 | 2026-06-08 | AUDIT_PASS | Verified Runtime invoke-codex route, real local Codex CLI adapter, and provider.codex execution output. |

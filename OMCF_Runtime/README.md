@@ -103,6 +103,12 @@ python OMCF_Runtime/runtime/omcf_runtime.py list-human-queue
 python OMCF_Runtime/runtime/omcf_runtime.py list-metrics
 ```
 
+Invoke the real Codex provider adapter:
+
+```powershell
+python OMCF_Runtime/runtime/omcf_runtime.py invoke-codex --task-file <task.json> --output-dir <dir>
+```
+
 运行产物会写入：
 
 ```text
@@ -120,3 +126,4 @@ OMCF_Runtime/tasks/runs/
 5. V2 只记录外部 Agent 调用合同，不直接调用远程模型。
 6. V2.5 只定义 Provider 合同和人工审批状态，不保存 API Key。
 7. V2.6 只执行已启用的本地 provider adapter；外部 API provider 未配置前不会伪造成功。
+8. `provider.codex` 使用本地 `codex exec`；`provider.codex.manual` 仅保留为兼容别名。
