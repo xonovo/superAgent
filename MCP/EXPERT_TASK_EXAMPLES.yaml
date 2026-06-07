@@ -1,0 +1,82 @@
+version: OMCF-V2.1
+project_scope: reusable
+tasks:
+  - id: TASK-AOEM-001
+    name: AOEM 内核优化与扩展
+    assigned_to: AOEM-001
+    nickname: 庞统
+    module: 13_AOEM
+    rules:
+      - must_reference: MCP/13_AOEM/aoem_core_spec.md
+      - must_pass_audit: true
+      - validate: GPU_dispatch_test
+    outputs:
+      - AOEM 内核扩展方案
+      - GPU 调度策略
+      - 隐私计算边界说明
+      - 执行优化验证报告
+    audit:
+      - type: core-audit
+        auditor: AUD-001
+        nickname: 赵云
+      - type: technical-review
+        reviewer: ARC-001 or OPS-001
+        nickname: 墨子或张飞
+    human_confirmation:
+      required_when:
+        - 修改核心执行逻辑
+        - 修改隐私计算边界
+        - 影响生产 GPU 调度
+
+  - id: TASK-MATH-001
+    name: 数据代数结构建模
+    assigned_to: MATH-001
+    nickname: 华佗
+    module: 14_Math
+    rules:
+      - must_reference: MCP/14_Math/algebra_spec.md
+      - must_pass_validation: true
+      - validate: Quantum_Simulation_Test
+    outputs:
+      - 代数结构定义
+      - 数学假设清单
+      - 推导或证明草案
+      - 模型验证报告
+    audit:
+      - type: math-model-audit
+        auditor: AUD-001
+        nickname: 赵云
+      - type: second-confirmation
+        reviewer: AI-001 or ARC-001
+        nickname: 王昭君或墨子
+    human_confirmation:
+      required_when:
+        - 数学模型进入生产判断链路
+        - 数学模型影响 AI 训练数据或自动决策
+
+  - id: TASK-LANG-001
+    name: 新语言自动演化
+    assigned_to: LANG-001
+    nickname: 庄周
+    module: 15_Language
+    rules:
+      - must_reference: MCP/15_Language/language_evolution_spec.md
+      - must_pass_audit: true
+      - validate: compiler-sanity-test
+    outputs:
+      - 语言目标与非目标
+      - 语义模型
+      - 指令集草案
+      - 编译优化规则
+      - 语言原型验证报告
+    audit:
+      - type: lang-design-audit
+        auditor: AUD-001
+        nickname: 赵云
+      - type: architecture-approval
+        reviewer: ARC-001
+        nickname: 墨子
+    human_confirmation:
+      required_when:
+        - 新语言方案进入项目主链路
+        - 指令集影响 AOEM 核心执行
