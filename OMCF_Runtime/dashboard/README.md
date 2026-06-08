@@ -94,6 +94,12 @@ Open:
 http://127.0.0.1:8765
 ```
 
+Chinese beginner guide:
+
+```text
+OMCF_Runtime/dashboard/USER_GUIDE_zh-CN.md
+```
+
 ## Alpha Boundaries
 
 - Human Queue buttons write only to `OMCF_Runtime/dashboard/state/`.

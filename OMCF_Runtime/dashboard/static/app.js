@@ -9,6 +9,61 @@ const statusClass = (value, prefix = "status") =>
 
 const byId = (id) => document.getElementById(id);
 
+const STATUS_ZH = {
+  running: "运行中",
+  waiting: "等待中",
+  audit: "审计中",
+  human: "等待人工审批",
+  idle: "空闲",
+  complete: "已完成",
+  blocked: "已阻断",
+  queued: "已入队",
+  ready: "可安全执行",
+  gated: "等待门禁",
+  PROVIDER_EXECUTED: "Provider已执行",
+  PROVIDER_FAILED: "Provider失败",
+  READY_FOR_SAFE_EXECUTION: "可安全执行",
+  SAFE_EXECUTION_QUEUED: "已进入安全队列",
+  WAIT_HUMAN_APPROVAL: "等待King Xu批准",
+  WAIT_AUDIT_PASS: "等待赵云审计",
+  WAIT_GATE: "等待门禁",
+  BLOCKED_PRODUCTION_DEFAULT_DENY: "生产默认禁止",
+  REJECTED: "已拒绝",
+  WORKER_COMPLETED: "Worker已完成",
+  WORKER_FAILED: "Worker失败",
+  WORKER_REJECTED: "Worker已拒绝",
+  WORKER_DRY_RUN_PASS: "Worker试跑通过",
+  adapter_required: "需要适配器",
+  deprecated_alias: "兼容旧名称",
+};
+
+const TERM_ZH = {
+  "Running Agents": "正在工作的AI角色",
+  "Safe Ready": "可进入安全执行的命令",
+  "Commands / Queue": "命令总数 / 安全队列",
+  "Worker Done": "Worker已完成任务",
+  Runs: "运行批次",
+  Invocations: "调用次数",
+  "Provider Executed": "Provider执行次数",
+  "Approval Requests": "审批请求数",
+  "Provider success": "Provider成功率",
+  Target: "对象",
+  Role: "角色",
+  Task: "任务",
+  Assignee: "负责人",
+  Artifact: "产物",
+  Command: "命令",
+  risk: "风险",
+  document: "文档任务",
+  code: "代码任务",
+  restricted: "受限高风险任务",
+  production: "生产任务",
+  low: "低风险",
+  medium: "中风险",
+  high: "高风险",
+  critical: "极高风险",
+};
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -23,6 +78,18 @@ function agentName(agentId) {
   return agent ? agent.nickname : agentId;
 }
 
+function zhStatus(value) {
+  return STATUS_ZH[value] || STATUS_ZH[String(value || "").toLowerCase()] || "";
+}
+
+function term(en, zh) {
+  return `<span class="term">${escapeHtml(en)}<small>${escapeHtml(zh || TERM_ZH[en] || "")}</small></span>`;
+}
+
+function statusPill(value, cssPrefix = "status") {
+  return `<span class="${cssPrefix === "status" ? "status-pill" : `${cssPrefix}-status`} ${statusClass(value, cssPrefix)}">${escapeHtml(value)}${zhStatus(value) ? `<small>${escapeHtml(zhStatus(value))}</small>` : ""}</span>`;
+}
+
 function renderSummary(snapshot) {
   const running = snapshot.agents.filter((agent) => agent.status === "running").length;
   const queue = snapshot.human_queue.filter((item) => item.queue_status === "pending").length;
@@ -31,10 +98,10 @@ function renderSummary(snapshot) {
   const safeQueued = snapshot.safe_execution_summary?.queued || 0;
   const workerDone = snapshot.worker_summary?.completed || 0;
   byId("summary-grid").innerHTML = `
-    <div class="summary-item"><span>Running Agents</span><strong>${running}</strong></div>
-    <div class="summary-item"><span>Safe Ready</span><strong>${safeReady}</strong></div>
-    <div class="summary-item"><span>Commands / Queue</span><strong>${commands}/${safeQueued}</strong></div>
-    <div class="summary-item"><span>Worker Done</span><strong>${workerDone}</strong></div>
+    <div class="summary-item">${term("Running Agents")}<strong>${running}</strong></div>
+    <div class="summary-item">${term("Safe Ready")}<strong>${safeReady}</strong></div>
+    <div class="summary-item">${term("Commands / Queue")}<strong>${commands}/${safeQueued}</strong></div>
+    <div class="summary-item">${term("Worker Done")}<strong>${workerDone}</strong></div>
   `;
 }
 
@@ -72,12 +139,12 @@ function renderAgentNode(agent) {
       <div>
         <div class="agent-name">
           <strong>${escapeHtml(agent.nickname)}</strong>
-          <span class="status-pill ${status}">${escapeHtml(agent.status_label)}</span>
+          <span class="status-pill ${status}">${escapeHtml(agent.status_label)}<small>${escapeHtml(zhStatus(agent.status) || zhStatus(agent.status_label))}</small></span>
         </div>
         <div class="agent-role">${escapeHtml(agent.role)}</div>
         <div class="agent-id">${escapeHtml(agent.id)} · ${invocations} invocations</div>
         <div class="inline-actions">
-          <button class="mini-button agent-trace-button" data-agent-id="${escapeHtml(agent.id)}">日志</button>
+          <button class="mini-button agent-trace-button" data-agent-id="${escapeHtml(agent.id)}">日志<small>全过程</small></button>
         </div>
       </div>
     </article>
@@ -90,7 +157,7 @@ function renderTasks(snapshot) {
       const status = statusClass(task.status, "task");
       return `
         <article class="task-item">
-          <span class="task-status ${status}">${escapeHtml(task.status)}</span>
+          <span class="task-status ${status}">${escapeHtml(task.status)}<small>${escapeHtml(zhStatus(task.status))}</small></span>
           <div>
             <div class="task-title">${escapeHtml(task.title)}</div>
             <div class="artifact">${escapeHtml(task.artifact)}</div>
@@ -99,8 +166,8 @@ function renderTasks(snapshot) {
           <div>
             <div class="small">${escapeHtml(task.phase)}</div>
             <div class="inline-actions">
-              <button class="mini-button start-run-button" data-task-id="${escapeHtml(task.id)}">启动</button>
-              <button class="mini-button task-trace-button" data-task-id="${escapeHtml(task.id)}">Trace</button>
+              <button class="mini-button start-run-button" data-task-id="${escapeHtml(task.id)}">启动<small>建命令</small></button>
+              <button class="mini-button task-trace-button" data-task-id="${escapeHtml(task.id)}">Trace<small>追踪</small></button>
             </div>
           </div>
         </article>
@@ -125,13 +192,13 @@ function renderTimeline(snapshot) {
             <div class="timeline-meta">
               <span>${escapeHtml(item.run_name)}</span>
               <span>${escapeHtml(item.provider_id)}</span>
-              <span>${item.mock ? "mock" : "real"}</span>
-              <span>${item.simulated ? "simulated" : "not simulated"}</span>
+              <span>${item.mock ? "mock 模拟" : "real 真实"}</span>
+              <span>${item.simulated ? "simulated 模拟执行" : "not simulated 非模拟"}</span>
             </div>
             <div class="artifact">${escapeHtml(item.artifact || "")}</div>
           </div>
           <div>
-            <span class="provider-status ${providerStatus}">${escapeHtml(item.status)}</span>
+            ${statusPill(item.status, "provider")}
             ${item.codex_version ? `<div class="small">${escapeHtml(item.codex_version)}</div>` : ""}
           </div>
         </article>
@@ -163,9 +230,9 @@ function renderQueue(snapshot) {
             <div class="small">${escapeHtml(item.approver)}</div>
           </div>
           <div class="queue-actions">
-            <button class="action-button action-approve" data-decision="approve" data-key="${escapeHtml(item.item_key)}">批准</button>
-            <button class="action-button action-reject" data-decision="reject" data-key="${escapeHtml(item.item_key)}">拒绝</button>
-            <button class="action-button action-return" data-decision="return" data-key="${escapeHtml(item.item_key)}">打回</button>
+            <button class="action-button action-approve" data-decision="approve" data-key="${escapeHtml(item.item_key)}">批准<small>同意记录</small></button>
+            <button class="action-button action-reject" data-decision="reject" data-key="${escapeHtml(item.item_key)}">拒绝<small>阻断记录</small></button>
+            <button class="action-button action-return" data-decision="return" data-key="${escapeHtml(item.item_key)}">打回<small>退回修改</small></button>
           </div>
         </article>
       `;
@@ -196,12 +263,12 @@ function renderMetrics(snapshot) {
       return `
         <article class="metric-item">
           <h3>${escapeHtml(agentName(metric.agent_id))} · ${escapeHtml(metric.agent_id)}</h3>
-          <div class="metric-line"><span>Runs</span><strong>${metric.runs ?? 0}</strong></div>
-          <div class="metric-line"><span>Invocations</span><strong>${metric.invocations ?? 0}</strong></div>
-          <div class="metric-line"><span>Provider Executed</span><strong>${metric.provider_executed ?? 0}</strong></div>
-          <div class="metric-line"><span>Approval Requests</span><strong>${metric.approval_requests ?? 0}</strong></div>
+          <div class="metric-line">${term("Runs")}<strong>${metric.runs ?? 0}</strong></div>
+          <div class="metric-line">${term("Invocations")}<strong>${metric.invocations ?? 0}</strong></div>
+          <div class="metric-line">${term("Provider Executed")}<strong>${metric.provider_executed ?? 0}</strong></div>
+          <div class="metric-line">${term("Approval Requests")}<strong>${metric.approval_requests ?? 0}</strong></div>
           <div class="bar-track"><div class="bar-fill" style="width:${rate}%"></div></div>
-          <div class="small">Provider success ${rate}%</div>
+          <div class="small">Provider success · Provider成功率 ${rate}%</div>
         </article>
       `;
     })
@@ -218,7 +285,7 @@ function renderProviders(snapshot) {
         <article class="provider-item">
           <div class="provider-name">
             <strong>${escapeHtml(provider.name)}</strong>
-            <span class="provider-status ${providerStatus}">${escapeHtml(status)}</span>
+            ${statusPill(status, "provider")}
           </div>
           <div class="small">${escapeHtml(provider.id)} · ${escapeHtml(provider.execution_mode)}</div>
           <div class="small">Last: ${escapeHtml(provider.last_task || "no invocation yet")}</div>
@@ -365,15 +432,15 @@ function renderTraceSummary(title, subtitle, metrics = {}) {
   return `
     <div class="trace-summary">
       <div>
-        <span class="meta-label">Target</span>
+        <span class="meta-label">Target <small>对象</small></span>
         <strong>${escapeHtml(title)}</strong>
       </div>
       <div>
-        <span class="meta-label">Role</span>
+        <span class="meta-label">Role <small>角色</small></span>
         <strong>${escapeHtml(subtitle)}</strong>
       </div>
       <div>
-        <span class="meta-label">Invocations</span>
+        <span class="meta-label">Invocations <small>调用次数</small></span>
         <strong>${escapeHtml(metrics.invocations ?? 0)}</strong>
       </div>
     </div>
@@ -384,15 +451,15 @@ function renderTaskSummary(task, assignee, artifactExists) {
   return `
     <div class="trace-summary">
       <div>
-        <span class="meta-label">Task</span>
+        <span class="meta-label">Task <small>任务</small></span>
         <strong>${escapeHtml(task.id)}</strong>
       </div>
       <div>
-        <span class="meta-label">Assignee</span>
+        <span class="meta-label">Assignee <small>负责人</small></span>
         <strong>${escapeHtml(assignee)}</strong>
       </div>
       <div>
-        <span class="meta-label">Artifact</span>
+        <span class="meta-label">Artifact <small>产物</small></span>
         <strong>${artifactExists ? "exists" : "pending"}</strong>
       </div>
     </div>
@@ -411,7 +478,7 @@ function renderTraceEvents(events, emptyText) {
             <div class="artifact">${escapeHtml(item.artifact || "")}</div>
           </div>
           <div class="small">${escapeHtml(item.run_name)} · ${escapeHtml(item.provider_id)}</div>
-          <span class="provider-status ${statusClass(item.status, "provider")}">${escapeHtml(item.status)}</span>
+          ${statusPill(item.status, "provider")}
         </article>
       `,
     )
@@ -435,12 +502,12 @@ function renderCommandCard(command) {
           <strong>${escapeHtml(command.task_title)}</strong>
           <div class="artifact">${escapeHtml(command.command_id)}</div>
         </div>
-        <span class="provider-status ${statusClass(command.status, "provider")}">${escapeHtml(command.status)}</span>
+        ${statusPill(command.status, "provider")}
       </div>
       <div class="command-meta">
         <span>${escapeHtml(command.agent)}</span>
-        <span>${escapeHtml(command.dry_run?.task_type || "unknown")}</span>
-        <span>risk: ${escapeHtml(command.dry_run?.risk || "unknown")}</span>
+        <span>${escapeHtml(command.dry_run?.task_type || "unknown")} · ${escapeHtml(TERM_ZH[command.dry_run?.task_type] || "任务类型")}</span>
+        <span>risk 风险: ${escapeHtml(command.dry_run?.risk || "unknown")} · ${escapeHtml(TERM_ZH[command.dry_run?.risk] || "")}</span>
         <span>${escapeHtml(command.created_at)}</span>
       </div>
       <div class="gate-row">${renderGateChips(command)}</div>
@@ -451,18 +518,18 @@ function renderCommandCard(command) {
 
 function renderGateChips(command) {
   const gates = command.gates || [];
-  if (!gates.length) return `<span class="gate-chip gate-waiting">No gates</span>`;
+  if (!gates.length) return `<span class="gate-chip gate-waiting">No gates<small>暂无门禁</small></span>`;
   return gates
     .map((gate) => {
       const passed = gate.status === "PASS";
-      return `<span class="gate-chip ${passed ? "gate-pass" : "gate-waiting"}">${escapeHtml(gate.label)} · ${escapeHtml(gate.status)}</span>`;
+      return `<span class="gate-chip ${passed ? "gate-pass" : "gate-waiting"}">${escapeHtml(gate.label)} · ${escapeHtml(gate.status)}<small>${passed ? "已通过" : "等待处理"}</small></span>`;
     })
     .join("");
 }
 
 function renderCommandActions(command) {
   const buttons = [
-    `<button class="mini-button command-action-button" data-command-action="dry-run" data-command-id="${escapeHtml(command.command_id)}">Dry Run</button>`,
+    `<button class="mini-button command-action-button" data-command-action="dry-run" data-command-id="${escapeHtml(command.command_id)}">Dry Run<small>试跑</small></button>`,
   ];
   const missing = command.missing_gates || [];
   if (command.status === "REJECTED") {
@@ -473,23 +540,23 @@ function renderCommandActions(command) {
     buttons.push(`<span class="gate-chip gate-blocked">生产默认禁止，需手动白名单</span>`);
   } else if (missing.includes("human_approval")) {
     buttons.push(
-      `<button class="mini-button command-action-button" data-command-action="approve" data-command-id="${escapeHtml(command.command_id)}">King Xu 批准</button>`,
-      `<button class="mini-button command-action-button" data-command-action="reject" data-command-id="${escapeHtml(command.command_id)}">拒绝</button>`,
+      `<button class="mini-button command-action-button" data-command-action="approve" data-command-id="${escapeHtml(command.command_id)}">King Xu 批准<small>人工同意</small></button>`,
+      `<button class="mini-button command-action-button" data-command-action="reject" data-command-id="${escapeHtml(command.command_id)}">拒绝<small>阻断任务</small></button>`,
     );
   } else if (missing.includes("audit_pass")) {
     buttons.push(
-      `<button class="mini-button command-action-button" data-command-action="audit-pass" data-command-id="${escapeHtml(command.command_id)}">赵云审计通过</button>`,
+      `<button class="mini-button command-action-button" data-command-action="audit-pass" data-command-id="${escapeHtml(command.command_id)}">赵云审计通过<small>允许继续</small></button>`,
     );
   } else if (command.safe_execution?.can_execute) {
     buttons.push(
-      `<button class="primary-button command-action-button" data-command-action="execute" data-command-id="${escapeHtml(command.command_id)}">安全执行</button>`,
+      `<button class="primary-button command-action-button" data-command-action="execute" data-command-id="${escapeHtml(command.command_id)}">安全执行<small>进入队列</small></button>`,
     );
   }
   if (command.status === "SAFE_EXECUTION_QUEUED") {
     buttons.push(
       `<span class="gate-chip gate-pass">已进入 Safe Execution Queue</span>`,
-      `<button class="mini-button command-action-button" data-command-action="worker-dry-run" data-command-id="${escapeHtml(command.command_id)}">Worker Dry Run</button>`,
-      `<button class="primary-button command-action-button" data-command-action="worker-execute" data-command-id="${escapeHtml(command.command_id)}">Worker 执行</button>`,
+      `<button class="mini-button command-action-button" data-command-action="worker-dry-run" data-command-id="${escapeHtml(command.command_id)}">Worker Dry Run<small>工人试跑</small></button>`,
+      `<button class="primary-button command-action-button" data-command-action="worker-execute" data-command-id="${escapeHtml(command.command_id)}">Worker 执行<small>低风险闭环</small></button>`,
     );
   }
   if (command.status === "WORKER_COMPLETED") {
@@ -539,7 +606,7 @@ async function workerRun(commandId, dryRun) {
             <div class="artifact">${escapeHtml(item.output_dir || item.reasons?.join("; ") || "")}</div>
           </div>
           <div class="small">${escapeHtml(item.provider_status || "")}</div>
-          <span class="status-pill ${item.status === "WORKER_COMPLETED" ? "status-complete" : "status-waiting"}">${dryRun ? "Dry Run" : "Worker"}</span>
+          <span class="status-pill ${item.status === "WORKER_COMPLETED" ? "status-complete" : "status-waiting"}">${dryRun ? "Dry Run" : "Worker"}<small>${dryRun ? "试跑" : "执行"}</small></span>
         </article>
       `,
     )

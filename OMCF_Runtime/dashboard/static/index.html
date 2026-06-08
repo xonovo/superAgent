@@ -13,16 +13,17 @@
           <div class="brand-mark">O</div>
           <div>
             <div class="brand-title">OMCF</div>
-            <div class="brand-subtitle">Dashboard Alpha</div>
+            <div class="brand-subtitle">Dashboard Alpha · 控制台</div>
           </div>
         </div>
         <nav class="nav-stack" aria-label="Dashboard sections">
           <button class="nav-button active" data-view="agents">组织树</button>
           <button class="nav-button" data-view="tasks">任务流</button>
           <button class="nav-button" data-view="timeline">对话轨迹</button>
-          <button class="nav-button" data-view="queue">Human Queue</button>
-          <button class="nav-button" data-view="metrics">Metrics</button>
-          <button class="nav-button" data-view="providers">Provider 链</button>
+          <button class="nav-button" data-view="queue">Human Queue<br /><small>人工审批</small></button>
+          <button class="nav-button" data-view="metrics">Metrics<br /><small>运行指标</small></button>
+          <button class="nav-button" data-view="providers">Provider 链<br /><small>调用来源</small></button>
+          <button class="nav-button" data-view="guide">使用教程</button>
         </nav>
         <div class="rail-footer">
           <span class="status-dot" id="socket-dot"></span>
@@ -33,16 +34,16 @@
       <main class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Agent Control Plane Observability</p>
+            <p class="eyebrow">Agent Control Plane Observability <span>AI公司运行观测</span></p>
             <h1 id="project-title">株洲物业监管平台</h1>
           </div>
           <div class="topbar-meta">
             <div>
-              <span class="meta-label">Runtime</span>
+              <span class="meta-label">Runtime <small>运行底座</small></span>
               <strong id="runtime-label">OMCF Runtime V2.6 frozen</strong>
             </div>
             <div>
-              <span class="meta-label">Updated</span>
+              <span class="meta-label">Updated <small>更新时间</small></span>
               <strong id="updated-at">--</strong>
             </div>
           </div>
@@ -52,9 +53,9 @@
 
         <section class="command-strip">
           <div>
-            <p class="eyebrow">Command Center Alpha</p>
+            <p class="eyebrow">Command Center Alpha <span>安全指挥台</span></p>
             <h2>指挥台</h2>
-            <p>按钮先 Dry Run，再按风险要求 King Xu 批准和赵云审计，低风险命令进入 Worker Alpha 闭环。</p>
+            <p>按钮先 <strong>Dry Run</strong><small>试跑和风险判断</small>，再按风险要求 King Xu 批准和赵云审计，低风险命令进入 Worker Alpha 闭环。</p>
           </div>
           <div class="command-actions">
             <button class="primary-button" id="start-next-run">启动下一任务</button>
@@ -66,7 +67,7 @@
           <div class="section-head">
             <div>
               <h2>Agent 组织树</h2>
-              <p>每个角色使用固定头像徽章和运行状态。</p>
+              <p><strong>Agent</strong><small>AI员工</small> 组织结构，每个角色有头像、状态和日志入口。</p>
             </div>
           </div>
           <div class="org-layout" id="org-layout"></div>
@@ -76,7 +77,7 @@
           <div class="section-head">
             <div>
               <h2>任务流</h2>
-              <p>从 Production Run 到下一轮 Alpha Run 的状态链。</p>
+              <p><strong>Task Flow</strong><small>任务状态链</small>，可以启动任务或查看执行追踪。</p>
             </div>
           </div>
           <div class="task-flow" id="task-flow"></div>
@@ -86,7 +87,7 @@
           <div class="section-head">
             <div>
               <h2>Agent 对话轨迹</h2>
-              <p>按 Provider 调用顺序展示真实协作痕迹。</p>
+              <p><strong>Conversation Trace</strong><small>协作痕迹</small>，按 Provider 调用顺序展示谁做了什么。</p>
             </div>
           </div>
           <div class="timeline" id="timeline"></div>
@@ -96,7 +97,7 @@
           <div class="section-head">
             <div>
               <h2>Human Queue</h2>
-              <p>Alpha 按钮只记录 Dashboard 决策日志，不改 Runtime 队列。</p>
+              <p><strong>Human Queue</strong><small>人工审批队列</small>，这里的按钮只记录审批决定，不直接改生产系统。</p>
             </div>
           </div>
           <div class="queue-table" id="human-queue"></div>
@@ -106,7 +107,7 @@
           <div class="section-head">
             <div>
               <h2>Metrics</h2>
-              <p>来自 Runtime metrics 目录的角色运行指标。</p>
+              <p><strong>Metrics</strong><small>运行指标</small>，来自 Runtime metrics 目录。</p>
             </div>
           </div>
           <div class="metric-grid" id="metrics"></div>
@@ -116,10 +117,66 @@
           <div class="section-head">
             <div>
               <h2>Provider 调用链</h2>
-              <p>Provider Registry 和真实调用记录的合并视图。</p>
+              <p><strong>Provider</strong><small>真正干活的工具/模型来源</small>，展示注册表和真实调用记录。</p>
             </div>
           </div>
           <div class="provider-grid" id="providers"></div>
+        </section>
+
+        <section class="view-panel" id="view-guide">
+          <div class="section-head">
+            <div>
+              <h2>使用教程</h2>
+              <p>按这个顺序用，就不会乱点：先看状态，再启动任务，再过门禁，最后让 Worker 执行低风险文档任务。</p>
+            </div>
+          </div>
+          <div class="guide-grid">
+            <article class="guide-card">
+              <h3>1. 看公司是否在运行</h3>
+              <p>先看顶部四个数字。</p>
+              <ul>
+                <li><strong>Running Agents</strong><small>正在工作的AI角色数量</small></li>
+                <li><strong>Safe Ready</strong><small>已经通过门禁、可以进入安全队列的命令</small></li>
+                <li><strong>Commands / Queue</strong><small>命令总数 / 等待Worker处理的数量</small></li>
+                <li><strong>Worker Done</strong><small>Worker已经完成的低风险任务</small></li>
+              </ul>
+            </article>
+            <article class="guide-card">
+              <h3>2. 启动一个任务</h3>
+              <p>点顶部“启动下一任务”，或进入“任务流”点某一行的“启动”。系统会创建命令，但不会直接改文件、数据库或生产。</p>
+              <p>命令创建后会自动进入 <strong>Dry Run</strong><small>试跑风险分类</small>。</p>
+            </article>
+            <article class="guide-card">
+              <h3>3. 看门禁结果</h3>
+              <p>点“查看命令日志”，看每条命令的门禁。</p>
+              <ul>
+                <li><strong>Dry Run</strong><small>判断任务风险</small></li>
+                <li><strong>King Xu Approval</strong><small>高风险任务需要你批准</small></li>
+                <li><strong>Zhao Yun Audit</strong><small>代码或高风险任务需要赵云审计</small></li>
+                <li><strong>Production Whitelist</strong><small>生产默认禁止，必须手工白名单</small></li>
+              </ul>
+            </article>
+            <article class="guide-card">
+              <h3>4. 安全执行</h3>
+              <p>命令显示 <strong>READY_FOR_SAFE_EXECUTION</strong><small>可安全执行</small> 时，才能点“安全执行”。</p>
+              <p>点完只会进入 <strong>Safe Execution Queue</strong><small>安全执行队列</small>，还不是碰生产。</p>
+            </article>
+            <article class="guide-card">
+              <h3>5. Worker 执行</h3>
+              <p>只有低风险文档任务可以点 <strong>Worker 执行</strong>。</p>
+              <p>Worker 会调用 Codex 的 read-only 沙箱生成文档，并写入项目记忆，再生成赵云审计记录。</p>
+            </article>
+            <article class="guide-card danger-guide">
+              <h3>永远不要期待这些按钮自动做的事</h3>
+              <ul>
+                <li>不会改数据库结构</li>
+                <li>不会连接银行或支付接口</li>
+                <li>不会执行 AOEM 核心能力</li>
+                <li>不会生产部署</li>
+                <li>不会删除文件</li>
+              </ul>
+            </article>
+          </div>
         </section>
 
         <section class="detail-panel" id="detail-panel" aria-live="polite">
