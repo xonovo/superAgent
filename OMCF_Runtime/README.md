@@ -1,5 +1,22 @@
 # OMCF Runtime
 
+## Naming
+
+```text
+OMCF = OneMan AI Company Framework
+OMC-OS = OneMan AI Company Operating System
+```
+
+OMCF 是“一人 AI 公司框架”。OMC-OS 是 OMCF 的产品化方向，即“一人 AI 公司操作系统”。
+
+当前目录仍然叫 `OMCF_Runtime`，表示 OMCF / OMC-OS 的运行时层。
+
+产品定位详见：
+
+```text
+OMCF_Runtime/OMC_OS_PRODUCT_BLUEPRINT.md
+```
+
 OMCF Runtime 是 OMCF 从“组织制度”进入“可运行组织”的执行引擎。
 
 当前目标不是写业务代码，而是跑通最小组织链路：

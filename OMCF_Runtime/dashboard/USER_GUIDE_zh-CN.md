@@ -1,4 +1,35 @@
-# OMCF Command Center 傻瓜使用手册
+# OMCF / OMC-OS Command Center 傻瓜使用手册
+
+## OMCF 是什么
+
+```text
+OMCF = OneMan AI Company Framework
+一人AI公司框架
+```
+
+它的意思是：
+
+```text
+一个人作为最终决策者
+通过一套 AI 组织、任务、审计、记忆、知识和执行系统
+管理多个 AI Agent 完成项目
+```
+
+现在它已经不只是 Framework，更接近：
+
+```text
+OMC-OS = OneMan AI Company Operating System
+一人AI公司操作系统
+```
+
+你可以这样理解：
+
+```text
+OMCF 是制度和框架
+OMCF Runtime 是运行时
+OMCF Dashboard 是控制台
+OMC-OS 是最终产品形态
+```
 
 打开地址：
 
@@ -7,6 +38,44 @@ http://127.0.0.1:8765
 ```
 
 这个页面不是普通看板，而是 OMCF 的安全指挥台。
+
+## 最终它会像什么
+
+它应该像一个 AI Agent 项目操作系统，而不是普通代码 IDE。
+
+最终使用方式是：
+
+```text
+新建项目
+→ 导入项目资料
+→ 绑定 Agent Pool
+→ 启动项目
+→ OMCF 调度 Agent 干活
+→ King Xu 审批关键节点
+→ 赵云审计
+→ Worker 写入项目记忆
+```
+
+注意：系统不会提前创建 NOVOVM、Wallet、Official_Website 这些空项目槽位。
+
+必须是你点击“新建项目”之后，才创建对应项目目录，避免知识污染。
+
+## 三个核心概念
+
+| 概念 | 中文解释 | 你怎么理解 |
+|---|---|---|
+| Workspace | 工作区 | 类似 VS Code 工作区，管理多个项目 |
+| Project | 项目 | 每个项目有独立资料、任务、记忆、输出、审计 |
+| Agent Pool | 智能体池 | 女娲、诸葛亮、墨子、赵云等公司级共享AI角色 |
+
+同一个 Agent 可以服务不同项目：
+
+```text
+诸葛亮 + 株洲物业项目资料 = 株洲项目经理
+诸葛亮 + NOVOVM项目资料 = NOVOVM项目经理
+```
+
+角色共享，项目记忆隔离。
 
 ## 先看顶部四个数字
 

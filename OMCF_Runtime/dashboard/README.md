@@ -1,5 +1,12 @@
 # OMCF Dashboard Alpha
 
+```text
+OMCF = OneMan AI Company Framework
+OMC-OS = OneMan AI Company Operating System
+```
+
+Dashboard Alpha 是 OMCF / OMC-OS 的控制台层。
+
 OMCF Dashboard Alpha is the observability and command layer for the existing
 OMCF Runtime.
 
