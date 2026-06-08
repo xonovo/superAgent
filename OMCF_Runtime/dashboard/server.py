@@ -539,6 +539,102 @@ def build_agent_bindings(
     ]
 
 
+def count_path_files(path: Path) -> int:
+    if path.is_file():
+        return 1
+    if path.is_dir():
+        return sum(1 for item in path.rglob("*") if item.is_file())
+    return 0
+
+
+def build_project_explorer(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    task_total = len(tasks)
+    task_complete = sum(1 for task in tasks if task.get("status") == "complete")
+    output_dir = PROJECT_MEMORY_DIR / "Safe_Execution_Worker_Alpha"
+    audit_files = list(PROJECT_MEMORY_DIR.rglob("*audit*.md")) if PROJECT_MEMORY_DIR.exists() else []
+    sections = [
+        {
+            "id": "project_pack",
+            "name": "Project Pack",
+            "name_zh": "项目资料包",
+            "path": "MCP/PROJECT_PACK_TEMPLATE.md",
+            "status": "template",
+            "items": count_path_files(REPO_ROOT / "MCP" / "PROJECT_PACK_TEMPLATE.md"),
+            "description": "Project intake materials and reusable pack template.",
+        },
+        {
+            "id": "memory",
+            "name": "Memory",
+            "name_zh": "项目记忆",
+            "path": display_path(PROJECT_MEMORY_DIR),
+            "status": "active",
+            "items": count_path_files(PROJECT_MEMORY_DIR),
+            "description": "Project-specific memory. Isolated from other projects.",
+        },
+        {
+            "id": "tasks",
+            "name": "Tasks",
+            "name_zh": "任务",
+            "path": "OMCF_Runtime/tasks",
+            "status": "tracked",
+            "items": task_total,
+            "description": f"{task_complete}/{task_total} tasks completed in the current project view.",
+        },
+        {
+            "id": "outputs",
+            "name": "Outputs",
+            "name_zh": "交付输出",
+            "path": display_path(output_dir),
+            "status": "safe-worker",
+            "items": count_path_files(output_dir),
+            "description": "Safe Execution Worker Alpha outputs only.",
+        },
+        {
+            "id": "audit",
+            "name": "Audit",
+            "name_zh": "审计",
+            "path": "OMCF_Runtime/audit",
+            "status": "gate",
+            "items": count_path_files(RUNTIME_DIR / "audit") + len(audit_files),
+            "description": "Human queue, audit gates, and Zhao Yun audit reports.",
+        },
+    ]
+    return sections
+
+
+def build_execution_terminal(
+    commands: list[dict[str, Any]],
+    timeline: list[dict[str, Any]],
+    worker_summary: dict[str, Any],
+) -> dict[str, Any]:
+    latest_commands = commands[-6:]
+    latest_provider_calls = timeline[-6:]
+    audit_events = [
+        event
+        for command in commands
+        for event in command.get("events", [])
+        if "AUDIT" in str(event.get("type", "")) or "HUMAN" in str(event.get("type", ""))
+    ][-6:]
+    latest_codex = next(
+        (
+            item
+            for item in reversed(timeline)
+            if "codex" in str(item.get("provider_id", "")).lower()
+        ),
+        None,
+    )
+    return {
+        "provider_calls": latest_provider_calls,
+        "audit_logs": audit_events,
+        "worker_logs": {
+            "summary": worker_summary,
+            "last_event": worker_summary.get("last_event"),
+        },
+        "codex_output": latest_codex,
+        "commands": latest_commands,
+    }
+
+
 def load_safe_execution_events() -> dict[str, list[dict[str, Any]]]:
     events: dict[str, list[dict[str, Any]]] = {}
     for row in read_jsonl(SAFE_EXECUTION_EVENT_LOG):
@@ -1066,12 +1162,15 @@ def build_snapshot() -> dict[str, Any]:
     active_project = next((project for project in projects if project["code"] == ACTIVE_PROJECT_CODE), None)
 
     worker_summary = load_worker_summary()
+    timeline = build_timeline(invocations)
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "workspace": build_workspace(projects, project_drafts),
         "projects": projects,
         "project_drafts": project_drafts[-10:],
         "agent_bindings": build_agent_bindings(agents, active_project),
+        "project_explorer": build_project_explorer(tasks),
+        "execution_terminal": build_execution_terminal(commands, timeline, worker_summary),
         "project": {
             "name": "株洲物业监管平台",
             "memory_path": str(PROJECT_MEMORY_DIR.relative_to(REPO_ROOT)),
@@ -1091,7 +1190,7 @@ def build_snapshot() -> dict[str, Any]:
         "metrics": list(metrics.values()),
         "providers": providers,
         "provider_invocations": invocations,
-        "timeline": build_timeline(invocations),
+        "timeline": timeline,
         "commands": commands[-20:],
         "safe_execution_summary": {
             "ready": sum(1 for command in commands if command.get("status") == "READY_FOR_SAFE_EXECUTION"),

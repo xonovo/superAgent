@@ -315,6 +315,50 @@ h3 {
   min-width: 0;
 }
 
+.ide-workbench-grid {
+  display: grid;
+  grid-template-areas:
+    "tree explorer console"
+    "terminal terminal terminal";
+  grid-template-columns: minmax(230px, 0.24fr) minmax(360px, 1fr) minmax(300px, 0.36fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.ide-pane {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 14px;
+}
+
+.workspace-tree-pane {
+  grid-area: tree;
+}
+
+.project-explorer-pane {
+  grid-area: explorer;
+}
+
+.agent-console-pane {
+  grid-area: console;
+}
+
+.execution-terminal-pane {
+  grid-area: terminal;
+  background: #101827;
+  color: #dbeafe;
+}
+
+.execution-terminal-pane .ide-panel-head {
+  color: #e5edf7;
+}
+
+.execution-terminal-pane .ide-panel-head small {
+  color: #93a4ba;
+}
+
 .ide-explorer,
 .ide-panel {
   border: 1px solid var(--line);
@@ -407,6 +451,165 @@ h3 {
   line-height: 1.45;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.tree-node {
+  display: grid;
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.tree-node:hover {
+  border-color: #94a3b8;
+  background: var(--surface-soft);
+}
+
+.tree-node small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  opacity: 1;
+}
+
+.explorer-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+  overflow-wrap: anywhere;
+}
+
+.explorer-row > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.explorer-row small,
+.explorer-row p {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.console-agent-list,
+.console-chat,
+#project-explorer {
+  display: grid;
+  gap: 10px;
+}
+
+.console-agent {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px;
+}
+
+.console-agent .avatar {
+  width: 42px;
+  height: 42px;
+}
+
+.console-agent strong {
+  color: var(--dark);
+}
+
+.console-divider {
+  margin: 14px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.console-divider small {
+  margin-left: 6px;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: none;
+}
+
+.console-message {
+  border-left: 3px solid #14b8a6;
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 10px 12px;
+}
+
+.console-message strong {
+  color: var(--dark);
+  font-size: 13px;
+}
+
+.console-message p {
+  margin: 4px 0;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.console-message small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.terminal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.terminal-pane {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: #0b1220;
+  padding: 12px;
+}
+
+.terminal-pane strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #f8fafc;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.terminal-line {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #b6c7dd;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.terminal-line b {
+  color: #5eead4;
+  font-weight: 800;
+}
+
+.terminal-line em {
+  color: #93c5fd;
+  font-style: normal;
 }
 
 .project-draft-form {
@@ -1032,8 +1235,18 @@ h3 {
   .command-main,
   .ide-layout,
   .ide-split,
-  .binding-row {
+  .binding-row,
+  .ide-workbench-grid,
+  .terminal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ide-workbench-grid {
+    grid-template-areas:
+      "tree"
+      "explorer"
+      "console"
+      "terminal";
   }
 
   .command-main {

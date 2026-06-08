@@ -1,4 +1,4 @@
-# OMCF / OMC-OS Command Center 傻瓜使用手册
+# OMC-OS Workbench 傻瓜使用手册
 
 ## OMCF 是什么
 
@@ -27,7 +27,7 @@ OMC-OS = OneMan AI Company Operating System
 ```text
 OMCF 是制度和框架
 OMCF Runtime 是运行时
-OMCF Dashboard 是控制台
+OMC-OS Workbench 是用户界面
 OMC-OS 是最终产品形态
 ```
 
@@ -79,7 +79,7 @@ http://127.0.0.1:8765
 
 ## 现在网页上新增了什么
 
-这次不是只写文档，控制台已经新增了 OMC-OS Workbench Alpha，也就是 AI Agent IDE 的第一版外壳。
+这次不是只写文档，控制台已经升级为 OMC-OS Workbench Alpha，也就是 AI Agent IDE 的第一版外壳。
 
 新增入口：
 
@@ -89,6 +89,15 @@ http://127.0.0.1:8765
 | 项目 | Projects | 看已经存在的项目记忆目录和新项目申请记录 |
 | Agent Pool | 智能体池 | 看公司级共享 AI 角色 |
 | 项目绑定 | Binding | 看每个 Agent 当前绑定到哪个项目上下文 |
+
+## IDE 四个区域怎么看
+
+| 区域 | 中文解释 | 用途 |
+|---|---|---|
+| Workspace Tree | 工作区树 | 像 VS Code 左侧目录，只显示真实项目 |
+| Project Explorer | 项目资源管理器 | 看 Project Pack、Memory、Tasks、Outputs、Audit |
+| Agent Console | 智能体控制台 | 看 Agent 状态和最近协作轨迹 |
+| Execution Terminal | 执行终端 | 看 Provider Calls、Audit Logs、Worker Logs、Codex Output |
 
 ### 新建项目怎么用
 

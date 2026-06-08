@@ -1,11 +1,18 @@
-# OMCF Dashboard Alpha
+# OMC-OS Workbench Alpha
 
 ```text
 OMCF = OneMan AI Company Framework
 OMC-OS = OneMan AI Company Operating System
 ```
 
-Dashboard Alpha 是 OMCF / OMC-OS 的控制台层。
+OMC-OS Workbench Alpha 是 OMC-OS 的用户界面层，也就是 AI Agent IDE
+的第一版产品形态。
+
+当前产品层次：
+
+1. OMCF: 公司治理层，负责组织、协议、审计、知识、记忆。
+2. OMCF Runtime: 执行层，负责 Task Engine、Provider、Worker、Human Queue。
+3. OMC-OS Workbench: 用户界面层，负责 Workspace、Projects、Agent Pool、Command Center。
 
 当前 UI 已升级为 OMC-OS Workbench Alpha。它还不是完整 IDE，但已经具备
 AI Agent IDE 的第一版外壳：
@@ -14,15 +21,18 @@ AI Agent IDE 的第一版外壳：
 - Projects 真实项目列表。
 - Agent Pool 公司级智能体池。
 - Project Binding 项目上下文绑定。
+- Project Explorer 项目资源管理器。
+- Agent Console 智能体控制台。
+- Execution Terminal 执行终端。
 - Command Center 安全指挥台。
 - Trace / Human Queue / Metrics / Provider 调用链。
 
-OMCF Dashboard Alpha is the observability and command layer for the existing
-OMCF Runtime.
+OMC-OS Workbench Alpha is the project-centered AI Agent IDE layer for the
+existing OMCF Runtime.
 
 It does not introduce a new Runtime version, role, or protocol. It reads the
 current Runtime, Provider, Audit, Metrics, and Project Memory artifacts and
-renders them as a control-center UI.
+renders them as an IDE-style workbench.
 
 ## Command Center Alpha
 

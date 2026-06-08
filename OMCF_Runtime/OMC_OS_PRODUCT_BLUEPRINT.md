@@ -5,6 +5,7 @@
 ```text
 OMCF = OneMan AI Company Framework
 OMC-OS = OneMan AI Company Operating System
+OMC-OS Workbench = project-centered AI Agent IDE
 ```
 
 OMCF is the framework name. It defines the AI company organization, roles,
@@ -13,9 +14,29 @@ rules, memory, knowledge, audit, and execution boundaries.
 OMC-OS is the product direction. It turns OMCF into an AI Agent project
 operating system.
 
+OMC-OS Workbench is the visible product surface. It is the AI Agent IDE for
+project-centered work.
+
 ## Product Positioning
 
 OMC-OS is not a code IDE. It is an AI Agent project operating system.
+
+Cursor is code-centered:
+
+```text
+Open repository
+  -> AI helps write code
+```
+
+OMC-OS Workbench is project-centered:
+
+```text
+Open project
+  -> AI organization binds to the project
+  -> Tasks are decomposed
+  -> Work is audited
+  -> Delivery artifacts are written back to project memory
+```
 
 Its job is to let one human decision maker manage many AI Agents across many
 projects through:
@@ -55,8 +76,12 @@ OMC-OS
 |   |-- Human Queue
 |   `-- Safe Execution Worker
 |
-`-- Dashboard Layer
+`-- Workbench Layer
     |-- Command Center
+    |-- Workspace Tree
+    |-- Project Explorer
+    |-- Agent Console
+    |-- Execution Terminal
     |-- Agent Timeline
     |-- Task Trace
     `-- Metrics
@@ -171,7 +196,7 @@ The Command Center should eventually support:
 9. View Execution Logs.
 10. View Provider Calls.
 
-Current Dashboard Alpha already supports:
+Current OMC-OS Workbench Alpha already supports:
 
 1. Agent status.
 2. Task flow.

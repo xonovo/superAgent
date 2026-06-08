@@ -77,13 +77,13 @@
               <button class="secondary-button" id="import-materials-request">导入资料</button>
             </div>
           </div>
-          <div class="ide-layout">
-            <aside class="ide-explorer">
+          <div class="ide-workbench-grid">
+            <aside class="ide-pane workspace-tree-pane">
               <div class="ide-panel-head">
-                <span>Workspace</span>
-                <small>工作区</small>
+                <span>Workspace Tree</span>
+                <small>工作区树</small>
               </div>
-              <div id="workspace-overview"></div>
+              <div id="workspace-tree"></div>
               <div class="project-draft-form">
                 <label>
                   <span>项目名称</span>
@@ -97,30 +97,26 @@
                 <p>Alpha 阶段只记录申请，不创建空项目目录。</p>
               </div>
             </aside>
-            <section class="ide-main">
-              <div class="ide-split">
-                <div class="ide-panel">
-                  <div class="ide-panel-head">
-                    <span>Projects</span>
-                    <small>真实项目</small>
-                  </div>
-                  <div id="workspace-projects"></div>
-                </div>
-                <div class="ide-panel">
-                  <div class="ide-panel-head">
-                    <span>Agent Pool</span>
-                    <small>公司级共享角色</small>
-                  </div>
-                  <div id="agent-pool-summary"></div>
-                </div>
+            <section class="ide-pane project-explorer-pane">
+              <div class="ide-panel-head">
+                <span>Project Explorer</span>
+                <small>项目资源管理器</small>
               </div>
-              <div class="ide-panel">
-                <div class="ide-panel-head">
-                  <span>Project Binding</span>
-                  <small>当前项目上下文</small>
-                </div>
-                <div id="binding-board"></div>
+              <div id="project-explorer"></div>
+            </section>
+            <aside class="ide-pane agent-console-pane">
+              <div class="ide-panel-head">
+                <span>Agent Console</span>
+                <small>智能体控制台</small>
               </div>
+              <div id="agent-console"></div>
+            </aside>
+            <section class="ide-pane execution-terminal-pane">
+              <div class="ide-panel-head">
+                <span>Execution Terminal</span>
+                <small>执行终端</small>
+              </div>
+              <div id="execution-terminal"></div>
             </section>
           </div>
         </section>
@@ -221,7 +217,7 @@
               <h3>0. 先理解 OMCF / OMC-OS</h3>
               <p><strong>OMCF</strong><small>OneMan AI Company Framework，一人AI公司框架</small></p>
               <p><strong>OMC-OS</strong><small>OneMan AI Company Operating System，一人AI公司操作系统</small></p>
-              <p>现在你看到的是 OMCF Dashboard，也就是未来 OMC-OS 的控制台层。</p>
+              <p>现在你看到的是 OMC-OS Workbench，也就是项目中心型 AI Agent IDE 的第一版。</p>
             </article>
             <article class="guide-card">
               <h3>项目怎么复用</h3>

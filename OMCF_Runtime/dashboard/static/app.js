@@ -108,37 +108,163 @@ function renderSummary(snapshot) {
 function renderWorkspace(snapshot) {
   const workspace = snapshot.workspace || {};
   const projects = snapshot.projects || [];
-  const activeProject =
-    projects.find((project) => project.code === workspace.active_project_code) || projects[0];
   const agents = snapshot.agents || [];
   const bindings = snapshot.agent_bindings || [];
-  byId("workspace-overview").innerHTML = `
+  const activeProject = projects.find((project) => project.code === workspace.active_project_code) || projects[0];
+  byId("workspace-tree").innerHTML = renderWorkspaceTree(workspace, projects, agents);
+  byId("project-explorer").innerHTML = renderProjectExplorer(snapshot.project_explorer || []);
+  byId("agent-console").innerHTML = renderAgentConsole(agents, bindings, snapshot.timeline || []);
+  byId("execution-terminal").innerHTML = renderExecutionTerminal(snapshot.execution_terminal || {});
+  if (activeProject) {
+    byId("project-title").textContent = activeProject.name;
+  }
+}
+
+function renderWorkspaceTree(workspace, projects, agents) {
+  const projectRows = projects
+    .map(
+      (project) => `
+        <button class="tree-node open-project-row" data-project-code="${escapeHtml(project.code)}">
+          <span>${project.status === "active" ? "●" : "○"} ${escapeHtml(project.name)}</span>
+          <small>${escapeHtml(project.code)}</small>
+        </button>
+      `,
+    )
+    .join("");
+  return `
     <article class="workspace-card">
       <strong>${escapeHtml(workspace.name || "KingXu_AI_Company")}</strong>
       <div class="workspace-meta">
         <span>${escapeHtml(workspace.product || "OMC-OS Workbench Alpha")}</span>
         <span>真实项目: ${projects.length}</span>
-        <span>新项目申请: ${workspace.draft_requests || 0}</span>
+        <span>Agent: ${agents.length}</span>
       </div>
       <div class="workspace-tree">
         <span>workspace/</span>
-        <span>|-- Agent Pool (${agents.length})</span>
-        <span>|-- Projects (${projects.length}, 不预创建空槽位)</span>
-        <span>|-- Runtime / Safe Worker</span>
-        <span>\`-- Dashboard / Command Center</span>
+        <span>|-- projects/</span>
+        ${projectRows || `<span>|   \`-- 暂无真实项目</span>`}
+        <span>|-- agent_pool/ (${agents.length})</span>
+        <span>|-- runtime/</span>
+        <span>\`-- governance/</span>
       </div>
     </article>
   `;
-  byId("workspace-projects").innerHTML =
-    projects.map((project) => renderProjectRow(project, true)).join("") ||
-    `<div class="empty-state">还没有真实项目。点击“记录新项目申请”只会写入申请日志，不会创建空目录。</div>`;
-  byId("agent-pool-summary").innerHTML = renderAgentPoolSummary(agents);
-  byId("binding-board").innerHTML =
-    bindings.slice(0, 6).map((binding) => renderBindingRow(binding, true)).join("") ||
-    `<div class="empty-state">暂无 Agent 绑定。</div>`;
-  if (activeProject) {
-    byId("project-title").textContent = activeProject.name;
+}
+
+function renderProjectExplorer(sections) {
+  if (!sections.length) {
+    return `<div class="empty-state">暂无项目资源。</div>`;
   }
+  return sections
+    .map(
+      (section) => `
+        <article class="explorer-row">
+          <div>
+            <strong>${escapeHtml(section.name)}</strong>
+            <small>${escapeHtml(section.name_zh || "")}</small>
+          </div>
+          <div class="project-meta">
+            <span>${escapeHtml(section.status)}</span>
+            <span>${escapeHtml(section.items)} items</span>
+          </div>
+          <div class="artifact">${escapeHtml(section.path)}</div>
+          <p>${escapeHtml(section.description || "")}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderAgentConsole(agents, bindings, timeline) {
+  const hotAgentIds = new Set(timeline.slice(-6).map((item) => item.agent_id));
+  const visibleAgents = agents
+    .filter((agent) => agent.id !== "KING-XU")
+    .sort((a, b) => Number(hotAgentIds.has(b.id)) - Number(hotAgentIds.has(a.id)))
+    .slice(0, 8);
+  const agentRows = visibleAgents
+    .map((agent) => {
+      const binding = bindings.find((item) => item.agent_id === agent.id);
+      return `
+        <article class="console-agent" style="--agent-color:${escapeHtml(agent.accent)}">
+          <div class="avatar">${escapeHtml(agent.avatar)}</div>
+          <div>
+            <strong>${escapeHtml(agent.nickname)}</strong>
+            <div class="small">${escapeHtml(agent.role)}</div>
+            <div class="small">${escapeHtml(binding?.project_code || "unbound")}</div>
+          </div>
+          ${statusPill(agent.status)}
+        </article>
+      `;
+    })
+    .join("");
+  const chatRows = timeline
+    .slice(-4)
+    .reverse()
+    .map(
+      (item) => `
+        <article class="console-message">
+          <strong>${escapeHtml(item.agent || item.agent_id)}</strong>
+          <p>${escapeHtml(item.task || "")}</p>
+          <small>${escapeHtml(item.provider_id || "")} · ${escapeHtml(item.status || "")}</small>
+        </article>
+      `,
+    )
+    .join("");
+  return `
+    <div class="console-agent-list">${agentRows}</div>
+    <div class="console-divider">Conversation Trace <small>最近协作</small></div>
+    <div class="console-chat">${chatRows || `<div class="empty-state">暂无 Agent 对话轨迹。</div>`}</div>
+  `;
+}
+
+function renderExecutionTerminal(terminal) {
+  const providerRows = (terminal.provider_calls || [])
+    .slice()
+    .reverse()
+    .map((item) => terminalLine(item.status, item.provider_id, item.task || item.artifact))
+    .join("");
+  const auditRows = (terminal.audit_logs || [])
+    .slice()
+    .reverse()
+    .map((item) => terminalLine(item.type, item.recorded_by || "audit", item.note || item.recorded_at))
+    .join("");
+  const worker = terminal.worker_logs?.summary || {};
+  const codex = terminal.codex_output;
+  return `
+    <div class="terminal-grid">
+      <div class="terminal-pane">
+        <strong>Provider Calls</strong>
+        ${providerRows || `<span class="terminal-line">No provider calls</span>`}
+      </div>
+      <div class="terminal-pane">
+        <strong>Audit Logs</strong>
+        ${auditRows || `<span class="terminal-line">No audit events</span>`}
+      </div>
+      <div class="terminal-pane">
+        <strong>Worker Logs</strong>
+        ${terminalLine("completed", "worker", `${worker.completed || 0} completed / ${worker.rejected || 0} rejected`)}
+        ${terminalLine("dry_run", "worker", `${worker.dry_run_pass || 0} dry-run pass`)}
+      </div>
+      <div class="terminal-pane">
+        <strong>Codex Output</strong>
+        ${
+          codex
+            ? terminalLine(codex.status, codex.provider_id, codex.artifact || codex.task)
+            : `<span class="terminal-line">No Codex output</span>`
+        }
+      </div>
+    </div>
+  `;
+}
+
+function terminalLine(status, source, message) {
+  return `
+    <span class="terminal-line">
+      <b>[${escapeHtml(status || "INFO")}]</b>
+      <em>${escapeHtml(source || "system")}</em>
+      ${escapeHtml(message || "")}
+    </span>
+  `;
 }
 
 function renderAgentPoolSummary(agents) {
@@ -457,6 +583,16 @@ function snapshotSignature(snapshot) {
       binding.project_code,
       binding.status,
     ]),
+    explorer: snapshot.project_explorer?.map((section) => [
+      section.id,
+      section.items,
+      section.status,
+    ]),
+    terminal: {
+      providers: snapshot.execution_terminal?.provider_calls?.length || 0,
+      audits: snapshot.execution_terminal?.audit_logs?.length || 0,
+      codex: snapshot.execution_terminal?.codex_output?.id || "",
+    },
     agents: snapshot.agents.map((agent) => [agent.id, agent.status, agent.metrics?.invocations ?? 0]),
     tasks: snapshot.tasks.map((task) => [task.id, task.status, task.last_command?.command_id || ""]),
     queue: snapshot.human_queue.map((item) => [
