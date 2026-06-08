@@ -7,6 +7,16 @@ OMC-OS = OneMan AI Company Operating System
 
 Dashboard Alpha 是 OMCF / OMC-OS 的控制台层。
 
+当前 UI 已升级为 OMC-OS Workbench Alpha。它还不是完整 IDE，但已经具备
+AI Agent IDE 的第一版外壳：
+
+- Workspace 工作区。
+- Projects 真实项目列表。
+- Agent Pool 公司级智能体池。
+- Project Binding 项目上下文绑定。
+- Command Center 安全指挥台。
+- Trace / Human Queue / Metrics / Provider 调用链。
+
 OMCF Dashboard Alpha is the observability and command layer for the existing
 OMCF Runtime.
 
@@ -25,6 +35,7 @@ POST /api/commands/{command_id}/approve
 POST /api/commands/{command_id}/reject
 POST /api/commands/{command_id}/audit-pass
 POST /api/commands/{command_id}/execute
+POST /api/projects/draft
 POST /api/worker/run-once
 POST /api/human-queue/{id}/approve
 POST /api/human-queue/{id}/reject
@@ -42,6 +53,7 @@ The UI uses them to:
 6. Let Safe Execution Worker Alpha process eligible low-risk commands.
 7. Inspect an agent timeline.
 8. Inspect a task trace.
+9. Record a new-project draft without creating an empty project directory.
 
 ## Safe Execution Gates
 

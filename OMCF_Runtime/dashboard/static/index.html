@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OMCF Dashboard Alpha</title>
+    <title>OMC-OS Workbench Alpha</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -12,12 +12,15 @@
         <div class="brand-block">
           <div class="brand-mark">O</div>
           <div>
-            <div class="brand-title">OMCF</div>
-            <div class="brand-subtitle">Dashboard Alpha · 控制台</div>
+            <div class="brand-title">OMC-OS</div>
+            <div class="brand-subtitle">Workbench Alpha · AI公司IDE</div>
           </div>
         </div>
         <nav class="nav-stack" aria-label="Dashboard sections">
-          <button class="nav-button active" data-view="agents">组织树</button>
+          <button class="nav-button active" data-view="workbench">工作台<br /><small>Workspace</small></button>
+          <button class="nav-button" data-view="projects">项目<br /><small>Projects</small></button>
+          <button class="nav-button" data-view="agents">Agent Pool<br /><small>智能体池</small></button>
+          <button class="nav-button" data-view="bindings">项目绑定<br /><small>Binding</small></button>
           <button class="nav-button" data-view="tasks">任务流</button>
           <button class="nav-button" data-view="timeline">对话轨迹</button>
           <button class="nav-button" data-view="queue">Human Queue<br /><small>人工审批</small></button>
@@ -34,7 +37,7 @@
       <main class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Agent Control Plane Observability <span>AI公司运行观测</span></p>
+            <p class="eyebrow">OMC-OS Agent Workbench <span>一人AI公司项目操作台</span></p>
             <h1 id="project-title">株洲物业监管平台</h1>
           </div>
           <div class="topbar-meta">
@@ -63,7 +66,90 @@
           </div>
         </section>
 
-        <section class="view-panel active" id="view-agents">
+        <section class="view-panel active" id="view-workbench">
+          <div class="section-head">
+            <div>
+              <h2>OMC-OS 工作台</h2>
+              <p><strong>Workbench</strong><small>AI Agent IDE 外壳</small>，从这里管理工作区、真实项目、Agent 绑定、任务和审批。</p>
+            </div>
+            <div class="inline-actions">
+              <button class="primary-button" id="open-active-project">打开当前项目</button>
+              <button class="secondary-button" id="import-materials-request">导入资料</button>
+            </div>
+          </div>
+          <div class="ide-layout">
+            <aside class="ide-explorer">
+              <div class="ide-panel-head">
+                <span>Workspace</span>
+                <small>工作区</small>
+              </div>
+              <div id="workspace-overview"></div>
+              <div class="project-draft-form">
+                <label>
+                  <span>项目名称</span>
+                  <input id="new-project-name" type="text" placeholder="例如：株洲物业监管平台" />
+                </label>
+                <label>
+                  <span>项目代号</span>
+                  <input id="new-project-code" type="text" placeholder="例如：Zhuzhou_Property_Platform" />
+                </label>
+                <button class="secondary-button" id="record-project-draft">记录新项目申请</button>
+                <p>Alpha 阶段只记录申请，不创建空项目目录。</p>
+              </div>
+            </aside>
+            <section class="ide-main">
+              <div class="ide-split">
+                <div class="ide-panel">
+                  <div class="ide-panel-head">
+                    <span>Projects</span>
+                    <small>真实项目</small>
+                  </div>
+                  <div id="workspace-projects"></div>
+                </div>
+                <div class="ide-panel">
+                  <div class="ide-panel-head">
+                    <span>Agent Pool</span>
+                    <small>公司级共享角色</small>
+                  </div>
+                  <div id="agent-pool-summary"></div>
+                </div>
+              </div>
+              <div class="ide-panel">
+                <div class="ide-panel-head">
+                  <span>Project Binding</span>
+                  <small>当前项目上下文</small>
+                </div>
+                <div id="binding-board"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-panel" id="view-projects">
+          <div class="section-head">
+            <div>
+              <h2>项目管理</h2>
+              <p><strong>Projects</strong><small>项目列表</small>，只展示已经真实存在的项目记忆目录，不预创建空槽位。</p>
+            </div>
+          </div>
+          <div class="project-list" id="project-list"></div>
+          <div class="draft-list-wrap">
+            <h3>新项目申请记录</h3>
+            <div id="project-draft-list"></div>
+          </div>
+        </section>
+
+        <section class="view-panel" id="view-bindings">
+          <div class="section-head">
+            <div>
+              <h2>项目绑定</h2>
+              <p><strong>Agent + Project Pack</strong><small>智能体绑定项目资料</small>，同一套 Agent Pool 进入当前项目上下文。</p>
+            </div>
+          </div>
+          <div class="binding-list" id="binding-list"></div>
+        </section>
+
+        <section class="view-panel" id="view-agents">
           <div class="section-head">
             <div>
               <h2>Agent 组织树</h2>
@@ -152,6 +238,12 @@
                 <li>诸葛亮 + NOVOVM资料 = NOVOVM项目经理</li>
               </ul>
               <p>角色共享，项目记忆隔离，避免知识污染。</p>
+            </article>
+            <article class="guide-card">
+              <h3>工作台怎么用</h3>
+              <p><strong>工作台</strong><small>OMC-OS 的 IDE 外壳第一版</small></p>
+              <p>左边看 Workspace 和新项目申请，右边看真实项目、Agent Pool 和当前项目绑定。</p>
+              <p>“记录新项目申请”只写 Alpha 日志，不会创建空项目目录。</p>
             </article>
             <article class="guide-card">
               <h3>1. 看公司是否在运行</h3>

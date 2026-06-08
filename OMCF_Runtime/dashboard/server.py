@@ -23,15 +23,17 @@ AGENTS_DIR = RUNTIME_DIR / "agents"
 PROVIDERS_FILE = RUNTIME_DIR / "providers" / "providers.json"
 METRICS_DIR = RUNTIME_DIR / "runtime" / "metrics"
 HUMAN_QUEUE_DIR = RUNTIME_DIR / "audit" / "human_queue"
-PROJECT_MEMORY_DIR = (
+PROJECT_MEMORY_ROOT = (
     REPO_ROOT
     / "MCP"
     / "17_Memory_Center"
     / "Project_Memory"
-    / "Zhuzhou_Property_Platform"
 )
+ACTIVE_PROJECT_CODE = "Zhuzhou_Property_Platform"
+PROJECT_MEMORY_DIR = PROJECT_MEMORY_ROOT / ACTIVE_PROJECT_CODE
 DECISION_LOG = STATE_DIR / "human_queue_decisions.jsonl"
 RUN_REQUEST_LOG = STATE_DIR / "run_requests.jsonl"
+PROJECT_DRAFT_LOG = STATE_DIR / "project_draft_requests.jsonl"
 SAFE_EXECUTION_EVENT_LOG = STATE_DIR / "safe_execution_events.jsonl"
 SAFE_EXECUTION_QUEUE_LOG = STATE_DIR / "safe_execution_queue.jsonl"
 PRODUCTION_ALLOWLIST_FILE = STATE_DIR / "production_allowlist.json"
@@ -326,6 +328,12 @@ class WorkerRunRequest(BaseModel):
     timeout_seconds: int = 300
 
 
+class ProjectDraftRequest(BaseModel):
+    name: str
+    code: str
+    note: str | None = None
+
+
 app = FastAPI(title="OMCF Dashboard Alpha", version="alpha")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -457,6 +465,78 @@ def display_path(path: Path) -> str:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
+
+
+def load_project_drafts() -> list[dict[str, Any]]:
+    return read_jsonl(PROJECT_DRAFT_LOG)
+
+
+def project_display_name(code: str) -> str:
+    names = {
+        "Zhuzhou_Property_Platform": "株洲物业监管平台",
+    }
+    return names.get(code, code.replace("_", " "))
+
+
+def load_projects() -> list[dict[str, Any]]:
+    projects: list[dict[str, Any]] = []
+    if not PROJECT_MEMORY_ROOT.exists():
+        return projects
+
+    for path in sorted(PROJECT_MEMORY_ROOT.iterdir()):
+        if not path.is_dir():
+            continue
+        code = path.name
+        if code.startswith("_"):
+            continue
+        output_count = sum(1 for item in path.rglob("*") if item.is_file())
+        projects.append(
+            {
+                "code": code,
+                "name": project_display_name(code),
+                "status": "active" if code == ACTIVE_PROJECT_CODE else "available",
+                "memory_path": display_path(path),
+                "memory_files": output_count,
+                "empty_slot": output_count == 0,
+            }
+        )
+    return projects
+
+
+def build_workspace(projects: list[dict[str, Any]], drafts: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "name": "KingXu_AI_Company",
+        "product": "OMC-OS Workbench Alpha",
+        "framework": "OMCF",
+        "active_project_code": ACTIVE_PROJECT_CODE,
+        "project_count": len(projects),
+        "draft_requests": len(drafts),
+        "no_empty_project_slots": True,
+        "policy": "Projects are created only after New Project approval. Empty project slots are forbidden.",
+    }
+
+
+def build_agent_bindings(
+    agents: list[dict[str, Any]],
+    active_project: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    project_name = (active_project or {}).get("name", "Unbound Project")
+    project_code = (active_project or {}).get("code", ACTIVE_PROJECT_CODE)
+    memory_path = (active_project or {}).get("memory_path", display_path(PROJECT_MEMORY_DIR))
+    return [
+        {
+            "agent_id": agent["id"],
+            "nickname": agent["nickname"],
+            "role": agent["role"],
+            "status": agent["status"],
+            "project_code": project_code,
+            "binding_label": f"{agent['nickname']} + {project_name}",
+            "memory_scope": memory_path,
+            "context_isolated": True,
+        }
+        for agent in agents
+        if agent["id"] != "KING-XU"
+    ]
 
 
 def load_safe_execution_events() -> dict[str, list[dict[str, Any]]]:
@@ -981,10 +1061,17 @@ def build_snapshot() -> dict[str, Any]:
     agents = build_agents(profiles, metrics, queue, invocations)
     tasks = build_tasks(commands)
     completed = sum(1 for task in tasks if task["status"] == "complete")
+    projects = load_projects()
+    project_drafts = load_project_drafts()
+    active_project = next((project for project in projects if project["code"] == ACTIVE_PROJECT_CODE), None)
 
     worker_summary = load_worker_summary()
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "workspace": build_workspace(projects, project_drafts),
+        "projects": projects,
+        "project_drafts": project_drafts[-10:],
+        "agent_bindings": build_agent_bindings(agents, active_project),
         "project": {
             "name": "株洲物业监管平台",
             "memory_path": str(PROJECT_MEMORY_DIR.relative_to(REPO_ROOT)),
@@ -1070,6 +1157,34 @@ def index() -> FileResponse:
 @app.get("/api/snapshot")
 def snapshot() -> dict[str, Any]:
     return build_snapshot()
+
+
+@app.post("/api/projects/draft")
+def create_project_draft(request: ProjectDraftRequest) -> dict[str, Any]:
+    code = request.code.strip().replace(" ", "_")
+    name = request.name.strip()
+    if not name or not code:
+        raise HTTPException(status_code=400, detail="name and code are required")
+    if any(char in code for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|']):
+        raise HTTPException(status_code=400, detail="project code contains invalid path characters")
+
+    existing = {project["code"] for project in load_projects()}
+    row = {
+        "draft_id": f"PROJECT-DRAFT-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid4().hex[:6]}",
+        "name": name,
+        "code": code,
+        "note": request.note or "",
+        "status": "DRAFT_RECORDED",
+        "created_by": "King Xu",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "requires_human_approval": True,
+        "creates_project_directory": False,
+        "empty_slot_created": False,
+        "blocked_reason": "Alpha only records the request. Project directory creation needs a separate approved action.",
+        "conflicts_existing_project": code in existing,
+    }
+    append_jsonl(PROJECT_DRAFT_LOG, row)
+    return {"ok": True, "draft": row, "workspace": build_workspace(load_projects(), load_project_drafts())}
 
 
 @app.post("/api/runs/start")

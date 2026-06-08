@@ -1,6 +1,6 @@
 const state = {
   snapshot: null,
-  activeView: "agents",
+  activeView: "workbench",
   lastSignature: "",
 };
 
@@ -102,6 +102,148 @@ function renderSummary(snapshot) {
     <div class="summary-item">${term("Safe Ready")}<strong>${safeReady}</strong></div>
     <div class="summary-item">${term("Commands / Queue")}<strong>${commands}/${safeQueued}</strong></div>
     <div class="summary-item">${term("Worker Done")}<strong>${workerDone}</strong></div>
+  `;
+}
+
+function renderWorkspace(snapshot) {
+  const workspace = snapshot.workspace || {};
+  const projects = snapshot.projects || [];
+  const activeProject =
+    projects.find((project) => project.code === workspace.active_project_code) || projects[0];
+  const agents = snapshot.agents || [];
+  const bindings = snapshot.agent_bindings || [];
+  byId("workspace-overview").innerHTML = `
+    <article class="workspace-card">
+      <strong>${escapeHtml(workspace.name || "KingXu_AI_Company")}</strong>
+      <div class="workspace-meta">
+        <span>${escapeHtml(workspace.product || "OMC-OS Workbench Alpha")}</span>
+        <span>真实项目: ${projects.length}</span>
+        <span>新项目申请: ${workspace.draft_requests || 0}</span>
+      </div>
+      <div class="workspace-tree">
+        <span>workspace/</span>
+        <span>|-- Agent Pool (${agents.length})</span>
+        <span>|-- Projects (${projects.length}, 不预创建空槽位)</span>
+        <span>|-- Runtime / Safe Worker</span>
+        <span>\`-- Dashboard / Command Center</span>
+      </div>
+    </article>
+  `;
+  byId("workspace-projects").innerHTML =
+    projects.map((project) => renderProjectRow(project, true)).join("") ||
+    `<div class="empty-state">还没有真实项目。点击“记录新项目申请”只会写入申请日志，不会创建空目录。</div>`;
+  byId("agent-pool-summary").innerHTML = renderAgentPoolSummary(agents);
+  byId("binding-board").innerHTML =
+    bindings.slice(0, 6).map((binding) => renderBindingRow(binding, true)).join("") ||
+    `<div class="empty-state">暂无 Agent 绑定。</div>`;
+  if (activeProject) {
+    byId("project-title").textContent = activeProject.name;
+  }
+}
+
+function renderAgentPoolSummary(agents) {
+  const counts = agents.reduce((acc, agent) => {
+    acc[agent.department] = (acc[agent.department] || 0) + 1;
+    return acc;
+  }, {});
+  return `
+    <article class="agent-pool-row">
+      <strong>公司级共享 Agent Pool</strong>
+      <div class="workspace-meta">
+        <span>总角色: ${agents.length}</span>
+        <span>高管: ${counts.executive || 0}</span>
+        <span>专业部门: ${counts.engineering || 0}</span>
+        <span>专家组: ${counts.expert || 0}</span>
+        <span>审计: ${counts.audit || 0}</span>
+      </div>
+      <p class="small">Agent 不属于单个项目。绑定 Project Pack 后，才进入该项目上下文。</p>
+    </article>
+  `;
+}
+
+function renderProjects(snapshot) {
+  const projects = snapshot.projects || [];
+  byId("project-list").innerHTML =
+    projects.map((project) => renderProjectRow(project, false)).join("") ||
+    `<div class="empty-state">还没有真实项目记忆目录。</div>`;
+  renderProjectDrafts(snapshot.project_drafts || []);
+}
+
+function renderProjectRow(project, compact) {
+  const badge = project.empty_slot ? "空槽位" : project.status === "active" ? "当前项目" : "可打开";
+  return `
+    <article class="project-row">
+      <div class="project-meta">
+        <span class="project-badge ${project.empty_slot ? "pending" : ""}">${escapeHtml(badge)}</span>
+        <span>${escapeHtml(project.code)}</span>
+      </div>
+      <strong>${escapeHtml(project.name)}</strong>
+      <div class="project-meta">
+        <span>记忆文件: ${escapeHtml(project.memory_files ?? 0)}</span>
+        <span>${escapeHtml(project.memory_path)}</span>
+      </div>
+      ${
+        compact
+          ? ""
+          : `<div class="inline-actions">
+              <button class="mini-button open-project-row" data-project-code="${escapeHtml(project.code)}">打开<small>查看上下文</small></button>
+            </div>`
+      }
+    </article>
+  `;
+}
+
+function renderProjectDrafts(drafts) {
+  if (!drafts.length) {
+    byId("project-draft-list").innerHTML = `<div class="empty-state">暂无新项目申请。这里不会自动创建空项目目录。</div>`;
+    return;
+  }
+  byId("project-draft-list").innerHTML = drafts
+    .slice()
+    .reverse()
+    .map(
+      (draft) => `
+        <article class="draft-row">
+          <div class="draft-meta">
+            <span class="project-badge pending">${escapeHtml(draft.status || "DRAFT_RECORDED")}</span>
+            <span>${escapeHtml(draft.created_at || "")}</span>
+          </div>
+          <strong>${escapeHtml(draft.name)} / ${escapeHtml(draft.code)}</strong>
+          <div class="draft-meta">
+            <span>创建目录: ${draft.creates_project_directory ? "是" : "否"}</span>
+            <span>空槽位: ${draft.empty_slot_created ? "已创建" : "未创建"}</span>
+            <span>${escapeHtml(draft.note || "")}</span>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderBindings(snapshot) {
+  const bindings = snapshot.agent_bindings || [];
+  byId("binding-list").innerHTML =
+    bindings.map((binding) => renderBindingRow(binding, false)).join("") ||
+    `<div class="empty-state">暂无项目绑定。</div>`;
+}
+
+function renderBindingRow(binding, compact) {
+  return `
+    <article class="binding-row">
+      <div>
+        <strong>${escapeHtml(binding.nickname)}</strong>
+        <div class="small">${escapeHtml(binding.agent_id)} · ${escapeHtml(binding.role)}</div>
+      </div>
+      <div>
+        <div class="task-title">${escapeHtml(binding.binding_label)}</div>
+        <div class="binding-meta">
+          <span>${escapeHtml(binding.project_code)}</span>
+          <span>记忆隔离: ${binding.context_isolated ? "是" : "否"}</span>
+          ${compact ? "" : `<span>${escapeHtml(binding.memory_scope)}</span>`}
+        </div>
+      </div>
+      ${statusPill(binding.status)}
+    </article>
   `;
 }
 
@@ -300,6 +442,21 @@ function renderProviders(snapshot) {
 
 function snapshotSignature(snapshot) {
   return JSON.stringify({
+    workspace: snapshot.workspace,
+    projects: snapshot.projects?.map((project) => [
+      project.code,
+      project.status,
+      project.memory_files,
+    ]),
+    projectDrafts: snapshot.project_drafts?.map((draft) => [
+      draft.draft_id,
+      draft.status,
+    ]),
+    bindings: snapshot.agent_bindings?.map((binding) => [
+      binding.agent_id,
+      binding.project_code,
+      binding.status,
+    ]),
     agents: snapshot.agents.map((agent) => [agent.id, agent.status, agent.metrics?.invocations ?? 0]),
     tasks: snapshot.tasks.map((task) => [task.id, task.status, task.last_command?.command_id || ""]),
     queue: snapshot.human_queue.map((item) => [
@@ -333,6 +490,9 @@ function render(snapshot) {
   if (signature === state.lastSignature) return;
   state.lastSignature = signature;
   renderSummary(snapshot);
+  renderWorkspace(snapshot);
+  renderProjects(snapshot);
+  renderBindings(snapshot);
   renderAgents(snapshot);
   renderTasks(snapshot);
   renderTimeline(snapshot);
@@ -344,6 +504,71 @@ function render(snapshot) {
 async function loadSnapshot() {
   const response = await fetch("/api/snapshot");
   render(await response.json());
+}
+
+function switchView(view) {
+  state.activeView = view;
+  document.querySelectorAll(".nav-button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.view === view);
+  });
+  document.querySelectorAll(".view-panel").forEach((panel) => panel.classList.remove("active"));
+  const panel = byId(`view-${view}`);
+  if (panel) panel.classList.add("active");
+}
+
+async function recordProjectDraft() {
+  const nameInput = byId("new-project-name");
+  const codeInput = byId("new-project-code");
+  const name = nameInput.value.trim();
+  const code = codeInput.value.trim();
+  if (!name || !code) {
+    showDetail("New Project", "请先填写项目名称和项目代号", `
+      <div class="empty-state">Alpha 阶段不会创建空项目目录。请填写名称和代号后，只记录一条新项目申请。</div>
+    `);
+    return;
+  }
+  const response = await fetch("/api/projects/draft", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name,
+      code,
+      note: "Recorded from OMC-OS Workbench Alpha UI",
+    }),
+  });
+  if (!response.ok) throw new Error("project draft failed");
+  const result = await response.json();
+  nameInput.value = "";
+  codeInput.value = "";
+  await loadSnapshot();
+  showDetail("New Project", "新项目申请已记录，不创建空目录", `
+    <article class="draft-row">
+      <strong>${escapeHtml(result.draft.name)} / ${escapeHtml(result.draft.code)}</strong>
+      <div class="draft-meta">
+        <span>${escapeHtml(result.draft.status)}</span>
+        <span>创建目录: ${result.draft.creates_project_directory ? "是" : "否"}</span>
+        <span>空槽位: ${result.draft.empty_slot_created ? "已创建" : "未创建"}</span>
+      </div>
+      <p class="small">${escapeHtml(result.draft.blocked_reason)}</p>
+    </article>
+  `);
+}
+
+function showProjectContext(projectCode) {
+  const project = state.snapshot?.projects?.find((item) => item.code === projectCode);
+  if (!project) return;
+  showDetail("Project Context", `${project.name} 项目上下文`, `
+    ${renderProjectRow(project, true)}
+    <div class="empty-state">当前 Alpha 只打开项目上下文视图。后续“打开项目”会切换 Project Pack、Memory、Tasks、Outputs、Audit 五个目录。</div>
+  `);
+}
+
+function showImportMaterialsPlaceholder() {
+  showDetail("Import Materials", "导入资料入口尚处于安全占位", `
+    <div class="empty-state">
+      这一版不会自动读写外部资料。下一步可以做“选择资料 -> 生成导入清单 -> King Xu 确认 -> 写入 Project Pack”的安全流程。
+    </div>
+  `);
 }
 
 async function startRun(taskId = "NEXT-001") {
@@ -625,11 +850,7 @@ function showDetail(kicker, title, body) {
 document.addEventListener("click", (event) => {
   const navButton = event.target.closest(".nav-button");
   if (navButton) {
-    state.activeView = navButton.dataset.view;
-    document.querySelectorAll(".nav-button").forEach((button) => button.classList.remove("active"));
-    navButton.classList.add("active");
-    document.querySelectorAll(".view-panel").forEach((panel) => panel.classList.remove("active"));
-    byId(`view-${state.activeView}`).classList.add("active");
+    switchView(navButton.dataset.view);
     return;
   }
 
@@ -670,6 +891,29 @@ document.addEventListener("click", (event) => {
     commandAction(commandActionButton.dataset.commandId, commandActionButton.dataset.commandAction).catch(() => {
       byId("socket-label").textContent = "Gate action failed";
     });
+    return;
+  }
+
+  if (event.target.closest("#record-project-draft")) {
+    recordProjectDraft().catch(() => {
+      byId("socket-label").textContent = "Project draft failed";
+    });
+    return;
+  }
+
+  const openProject = event.target.closest(".open-project-row");
+  if (openProject) {
+    showProjectContext(openProject.dataset.projectCode);
+    return;
+  }
+
+  if (event.target.closest("#open-active-project")) {
+    switchView("projects");
+    return;
+  }
+
+  if (event.target.closest("#import-materials-request")) {
+    showImportMaterialsPlaceholder();
     return;
   }
 
